@@ -58,9 +58,9 @@ namespace xeditor::document
 
                                                 main                        ( xcore::string::constant<char> Str
                                                                             , xeditor::frame::base&         Frame )                 noexcept;
-                                                main                        ( xeditor::frame::base& Frame )                         noexcept;
+        inline                                  main                        ( xeditor::frame::base& Frame )                         noexcept;
         virtual                                ~main                        ( void )                                                noexcept;
-                                auto&           setupProjectFileExt         ( const path::project Extension )                       noexcept;
+        inline                  auto&           setupProjectFileExt         ( const path::project Extension )                       noexcept;
         
         xforceinline            void            setSystemDirectory          ( std::filesystem::path& Path )                         noexcept;
         xforceinline            const auto&     getSystemDirectory          ( void )                                                noexcept;

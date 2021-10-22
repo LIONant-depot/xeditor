@@ -16,9 +16,9 @@ namespace xeditor::frame
 
     //---------------------------------------------------------------------------------------------------------
 
-    auto base::getWindow(void) noexcept
+    xgpu::window& base::getWindow(void) noexcept
     { 
-        return m_pWindow; 
+        return m_XGPUWindow; 
     }
 
     //---------------------------------------------------------------------------------------------------------

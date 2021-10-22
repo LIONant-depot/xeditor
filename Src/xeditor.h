@@ -2,22 +2,22 @@
 #define XEDITOR_H
 #pragma once
 
+//
+// System Includes
+//
 #include <stdexcept>
 
 //
-// Key Includes
+// 3rd Party Includes
 //
 #include "xcore.h"
 #include "../dependencies/xcore/dependencies/tracy/imgui/imgui.h"
 #include "xGPU.h"
+#include "../Tools/xgpu_view.h"
 
 //
 // Predefinitions 
 //
-namespace xeditor
-{
-}
-
 namespace xeditor::document
 {
     class base;
@@ -34,13 +34,18 @@ namespace xeditor::frame
     class base;
 }
 
+namespace xeditor::tab
+{
+    class base;
+}
+
 //
 // Public headers
 //
 #include "xeditor_command.h"
 #include "xeditor_document_base.h"
 #include "xeditor_document_main.h"
-#include "xeditor_plugins.h"
+#include "xeditor_tab.h"
 #include "xeditor_frame.h"
 #include "xeditor_ui.h"
 
@@ -51,6 +56,6 @@ namespace xeditor::frame
 #include "details/xeditor_document_main_inline.h"
 #include "details/xeditor_ui_inline.h"
 #include "details/xeditor_frame_inline.h"
-
+#include "details/xeditor_tab_inline.h"
 
 #endif
