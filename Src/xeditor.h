@@ -14,6 +14,9 @@
 #include "../dependencies/xcore/dependencies/tracy/imgui/imgui.h"
 #include "xGPU.h"
 #include "../Tools/xgpu_view.h"
+#include "../dependencies/IconFontCppHeaders/IconsFontAwesome5.h"
+#include "../dependencies/IconFontCppHeaders/IconsKenney.h"
+#include "../dependencies/IconFontCppHeaders/IconsMaterialDesign.h"
 
 //
 // Predefinitions 

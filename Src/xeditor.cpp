@@ -1,10 +1,10 @@
 
 #include "xeditor.h"
 
-#include "../dependencies/IconFontCppHeaders/IconsFontAwesome5.h"
-#include "../dependencies/IconFontCppHeaders/IconsKenney.h"
-#include "../dependencies/IconFontCppHeaders/IconsMaterialDesign.h"
-
+#include "../dependencies/xcore/dependencies/tracy/imgui/misc/kenney_icon_font.h"
+#include "../dependencies/xcore/dependencies/tracy/imgui/misc/MaterialIcons_Regular.h"
+#include "../dependencies/xcore/dependencies/tracy/imgui/misc/fa_solid_900.h"
+#include "../dependencies/xcore/dependencies/tracy/imgui/misc/fa_regular_400.h"
 
 #include "details/xeditor_document_base.cpp"
 #include "details/xeditor_document_main.cpp"

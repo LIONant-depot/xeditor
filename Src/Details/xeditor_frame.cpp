@@ -83,15 +83,37 @@ void base::InitializeImGui( void )
         ImFontConfig icons_config;
         icons_config.MergeMode = true;
         icons_config.PixelSnapH = true;
-        io.Fonts->AddFontFromFileTTF( "fontawesome-webfont.ttf", 14.0f, &icons_config, icons_ranges_fontawesome.data());
-        //io.Fonts->AddFontFromFileTTF( "../kenney-icon-font.ttf",    16.0f, &icons_config, icons_ranges_kenney);
-        //  io.Fonts->AddFontFromFileTTF( "../MaterialIcons-Regular.ttf", 13.0f, &icons_config, icons_ranges_materialdesign);
-    }
 
-    //
-    // Set the log function
-    //
-    //g_context::get().m_pLogOuputFn = MyLogOutput;
+        io.Fonts->AddFontFromMemoryCompressedTTF
+        ( fa_solid_900_compressed_data
+        , fa_solid_900_compressed_size
+        , 14.0f
+        , &icons_config
+        , icons_ranges_fontawesome.data()
+        );
+
+        io.Fonts->AddFontFromMemoryCompressedTTF
+        ( kenney_icon_font_compressed_data
+        , kenney_icon_font_compressed_size
+        , 14.0f
+        , &icons_config
+        , icons_ranges_kenney.data()
+        );
+
+        io.Fonts->AddFontFromMemoryCompressedTTF
+        ( MaterialIcons_Regular_compressed_data
+        , MaterialIcons_Regular_compressed_size
+        , 13.0f
+        , &icons_config
+        , icons_ranges_materialdesign.data()
+        );
+
+        io.Fonts->Build();
+
+        //io.Fonts->AddFontFromFileTTF( "fontawesome-webfont.ttf", 14.0f, &icons_config, icons_ranges_fontawesome.data());
+        //io.Fonts->AddFontFromFileTTF( "../kenney-icon-font.ttf",    16.0f, &icons_config, icons_ranges_kenney);
+        //io.Fonts->AddFontFromFileTTF( "../MaterialIcons-Regular.ttf", 13.0f, &icons_config, icons_ranges_materialdesign);
+    }
 }
 
 //-------------------------------------------------------------------------------------------
@@ -205,7 +227,7 @@ void base::EndFrame( void )
     ImGui::End();
 */
     // Now we can pop the other two transparent colors (child and window)
-    ImGui::PopStyleColor(2); 
+    //ImGui::PopStyleColor(2); 
 
     //
     // Draw the gui
@@ -316,7 +338,7 @@ bool base::onAdvanceLogic( void )
     //
     // Read all the input events
     //
-    if (m_XGPUInstance.ProcessInputEvents())
+    if( false == m_XGPUInstance.ProcessInputEvents() )
         return false;
 
     //
