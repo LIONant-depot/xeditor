@@ -5,8 +5,9 @@ namespace xeditor::frame
     public:
 
                                                 base                ( void ) = default;
+                                                base                ( xgpu::window& Window );
         virtual                                ~base                ( void );
-                        base&                   setupEngWindow      ( xgpu::window& Window );
+//                        base&                   setupEngWindow      ( xgpu::window& Window );
                         bool                    AdvanceLogic        ( void );
         inline         xeditor::document::main& getMainDoc          ( void )                                                                                    noexcept;
                         xcore::err              CreateTab           ( const char* pString, bool bActive = false )                                               noexcept;

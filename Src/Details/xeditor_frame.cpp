@@ -27,7 +27,7 @@ void base::_SystemMainInit( xeditor::document::main& MainDoc )
 
 //-------------------------------------------------------------------------------------------
 
-base& base::setupEngWindow( xgpu::window& Window )
+base::base( xgpu::window& Window )
 { 
     //
     // Save the window
@@ -46,8 +46,6 @@ base& base::setupEngWindow( xgpu::window& Window )
 
     // User Initialize
     onSetup(); 
-
-    return *this;
 }
 
 //-------------------------------------------------------------------------------------------
