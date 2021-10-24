@@ -44,6 +44,13 @@ namespace xeditor::frame
     }
 
     //---------------------------------------------------------------------------------------------------------
+
+    const ImGuiWindowClass& main::getImGuiClass(void) const noexcept
+    { 
+        return m_ImGuiClass; 
+    }
+
+    //---------------------------------------------------------------------------------------------------------
     const ImGuiWindowClass& main::getImGuiClass(frame::instance_guid ParentGuid) const noexcept
     {
         for (auto& E : m_lFrames)

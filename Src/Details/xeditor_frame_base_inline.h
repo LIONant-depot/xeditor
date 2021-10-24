@@ -61,4 +61,45 @@ namespace xeditor::frame
     { 
         return m_MainFrame.getMainDoc();
     }
+
+    //-------------------------------------------------------------------------------------------
+    bool base::isOpen(void) const noexcept
+    { 
+        return m_OpenPanel; 
+    }
+    //-------------------------------------------------------------------------------------------
+
+    void base::setOpen(bool bOpen) 
+    { 
+        m_OpenPanel = bOpen; 
+    }
+
+    //-------------------------------------------------------------------------------------------
+
+    bool base::isVisible(void) const noexcept 
+    { 
+        return m_OpenPanel && m_bPanelVisible; 
+    }
+
+    //-------------------------------------------------------------------------------------------
+
+    void base::setActive(void) noexcept 
+    { 
+        m_bSetActive = true; 
+    }
+
+    //-------------------------------------------------------------------------------------------
+
+    instance_guid base::getGuid(void) const noexcept 
+    { 
+        return m_InstanceGuid; 
+    }
+
+    //-------------------------------------------------------------------------------------------
+
+    const ImGuiWindowClass& base::getImGuiClass( void ) const noexcept 
+    { 
+        return m_ImGuiClass; 
+    }
+
 }

@@ -19,7 +19,7 @@ namespace xeditor::frame
         
         template< typename T > 
         xforceinline    void                    appendDelayCmd      ( T&& Function )                                noexcept;
-        inline          const ImGuiWindowClass& getImGuiClass       ( void ) const                                  noexcept{ return m_ImGuiClass; }
+        inline          const ImGuiWindowClass& getImGuiClass       ( void ) const                                  noexcept;
         inline          const ImGuiWindowClass& getImGuiClass       ( frame::instance_guid ParentGuid ) const       noexcept;
     
     protected:

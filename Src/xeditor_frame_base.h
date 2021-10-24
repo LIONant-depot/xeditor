@@ -63,13 +63,13 @@ namespace xeditor::frame
         virtual                                ~base                ( void ) = default;
         virtual         const type&             getType             ( void ) = 0;
                         void                    Render              ( void );
-        inline          bool                    isOpen              ( void ) const { return m_OpenPanel; }
-        inline          void                    setOpen             ( bool bOpen ) { m_OpenPanel = bOpen; }
+        inline          bool                    isOpen              ( void ) const noexcept;
+        inline          void                    setOpen             ( bool bOpen );
         inline         xeditor::document::main& getMainDoc          ( void );
-        inline          bool                    isVisible           ( void )                                            const   noexcept { return m_OpenPanel && m_bPanelVisible; }
-        inline          void                    setActive           ( void )                                                    noexcept { m_bSetActive = true; }
-        inline          instance_guid           getGuid             ( void ) const noexcept { return m_InstanceGuid; }
-        inline          const ImGuiWindowClass& getImGuiClass       ( void ) const noexcept { return m_ImGuiClass; }
+        inline          bool                    isVisible           ( void )                                            const   noexcept;
+        inline          void                    setActive           ( void )                                                    noexcept;
+        inline          instance_guid           getGuid             ( void ) const noexcept;
+        inline          const ImGuiWindowClass& getImGuiClass       ( void ) const noexcept;
     
     protected:
 
