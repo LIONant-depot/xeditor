@@ -36,10 +36,10 @@ namespace xeditor::command
 
 namespace xeditor::frame
 {
-    class base;
+    class main;
 }
 
-namespace xeditor::tab
+namespace xeditor::frame
 {
     class base;
 }
@@ -50,8 +50,8 @@ namespace xeditor::tab
 #include "xeditor_command.h"
 #include "xeditor_document_base.h"
 #include "xeditor_document_main.h"
-#include "xeditor_tab.h"
-#include "xeditor_frame.h"
+#include "xeditor_frame_base.h"
+#include "xeditor_frame_main.h"
 #include "xeditor_ui.h"
 
 //
@@ -60,7 +60,7 @@ namespace xeditor::tab
 #include "details/xeditor_document_base_inline.h"
 #include "details/xeditor_document_main_inline.h"
 #include "details/xeditor_ui_inline.h"
-#include "details/xeditor_frame_inline.h"
-#include "details/xeditor_tab_inline.h"
+#include "details/xeditor_frame_main_inline.h"
+#include "details/xeditor_frame_base_inline.h"
 
 #endif

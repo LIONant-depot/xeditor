@@ -1,11 +1,14 @@
-namespace xeditor::tab
+namespace xeditor::frame
 {
     namespace details
     {
-        template< typename T_TYPE >
+        constexpr auto main_frame_class_guid_v = frame::type_guid{ xeditor::frame::type_guid_v, xeditor::frame::main::class_name_v };
+
+        template< typename T_TYPE, typename T_PARENT_TYPE = xeditor::frame::main >
         struct type_harness : type
         {
-            constexpr static auto class_guid_v = tab::type_guid{ xeditor::tab::type_guid_v, T_TYPE::class_name_v };
+            constexpr static auto class_guid_v          = frame::type_guid{ xeditor::frame::type_guid_v, T_TYPE::class_name_v };
+            constexpr static auto parent_class_guid_v   = frame::type_guid{ xeditor::frame::type_guid_v, T_PARENT_TYPE::class_name_v };
 
             constexpr type_harness( xcore::string::constant<char> Str, flags Flags = {}, int Weight = 0, xcore::icolor Col = xcore::icolor{ ~0u } ) noexcept
                 : type
@@ -24,12 +27,13 @@ namespace xeditor::tab
                     }(Str)
                     , Str
                     , class_guid_v
+                    , parent_class_guid_v
                     , Flags
                     , Weight
                     , Col
                 ) {}
 
-            virtual std::unique_ptr<tab::base> New( xeditor::frame::base& EditorFrame ) const override
+            virtual std::unique_ptr<frame::base> New( xeditor::frame::main& EditorFrame ) const override
             {
                 return std::make_unique<T_TYPE>( m_TypeName, type::CreateInstanceGuid(), EditorFrame );
             }
@@ -45,9 +49,9 @@ namespace xeditor::tab
 
     //-------------------------------------------------------------------------------------------
 
-    tab::type*& tab::type::getHead( void )
+    frame::type*& frame::type::getHead( void )
     { 
-        static tab::type* pHead{ nullptr }; 
+        static frame::type* pHead{ nullptr }; 
         return pHead; 
     }
 
@@ -55,6 +59,6 @@ namespace xeditor::tab
 
     xeditor::document::main& base::getMainDoc( void )
     { 
-        return m_EditorFrame.getMainDoc();
+        return m_MainFrame.getMainDoc();
     }
 }

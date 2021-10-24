@@ -4,7 +4,7 @@
 namespace xeditor::frame {
 
 //-------------------------------------------------------------------------------------------
-base::~base( void )
+main::~main( void )
 {
     //
     // Shut down
@@ -14,12 +14,12 @@ base::~base( void )
 
 //-------------------------------------------------------------------------------------------
 
-void base::_SystemMainInit( xeditor::document::main& MainDoc )
+void main::_SystemMainInit( xeditor::document::main& MainDoc )
 {
     m_pDocument = &MainDoc;
     m_delegatemsgCloseProject.Connect( MainDoc.m_Events.m_CloseProject );
 
-    for( auto* pNext = xeditor::tab::type::getHead(); pNext; pNext = pNext->m_pNext )
+    for( auto* pNext = xeditor::frame::type::getHead(); pNext; pNext = pNext->m_pNext )
     {
         pNext->RegisterSystem();
     }
@@ -27,7 +27,7 @@ void base::_SystemMainInit( xeditor::document::main& MainDoc )
 
 //-------------------------------------------------------------------------------------------
 
-base::base( xgpu::window& Window )
+main::main( xgpu::window& Window )
 { 
     //
     // Save the window
@@ -50,21 +50,21 @@ base::base( xgpu::window& Window )
 
 //-------------------------------------------------------------------------------------------
 
-bool base::AdvanceLogic( void )
+bool main::AdvanceLogic( void )
 { 
     return onAdvanceLogic(); 
 }
 
 //-------------------------------------------------------------------------------------------
 
-void base::onSetup( void )
+void main::onSetup( void )
 {
     InitializeImGui();
 }
 
 //-------------------------------------------------------------------------------------------
 
-void base::InitializeImGui( void )
+void main::InitializeImGui( void )
 {
     //
     // Create IMGUI context outside the breach since we are going to be setting some fonts
@@ -117,37 +117,85 @@ void base::InitializeImGui( void )
     //
     // Build the font
     //
-     io.Fonts->Build();
+    io.Fonts->Build();
 
-     //
-     // Initialize the breach officially 
-     //
-     if (auto Err = xgpu::tools::imgui::CreateInstance(m_XGPUWindow); Err)
-         throw(std::runtime_error(xgpu::getErrorMsg(Err)));
+    //
+    // Enable docking
+    //
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
+
+    //
+    // Initialize the breach officially 
+    //
+    if (auto Err = xgpu::tools::imgui::CreateInstance(m_XGPUWindow); Err)
+        throw(std::runtime_error(xgpu::getErrorMsg(Err)));
 }
 
 //-------------------------------------------------------------------------------------------
 
-void base::onBegingRender( void )
+void main::onBegingRender( void )
 {
 //    m_Window->BeginRender( m_View );
 }
 
 //-------------------------------------------------------------------------------------------
-void base::onEndRender( void )
+void main::onEndRender( void )
 {
     m_XGPUWindow.PageFlip();
 }
 
 //-------------------------------------------------------------------------------------------
 
-bool base::BeginFrame( void )
+bool main::BeginFrame( void )
 {
     //
     // Check if we need to render
     //
-    if( xgpu::tools::imgui::BeginRendering(true) )
+    if( xgpu::tools::imgui::BeginRendering(false) )
         return true;
+
+    //
+    // Enable docking
+    //
+    {
+        constexpr bool                  opt_padding = false;
+        constexpr ImGuiDockNodeFlags    dockspace_flags = ImGuiDockNodeFlags_AutoHideTabBar
+            | ImGuiDockNodeFlags_PassthruCentralNode;
+        constexpr ImGuiWindowFlags      window_flags = ImGuiWindowFlags_MenuBar
+            | ImGuiWindowFlags_NoDocking
+            | ImGuiWindowFlags_NoBackground
+            | ImGuiWindowFlags_NoTitleBar
+            | ImGuiWindowFlags_NoCollapse
+            | ImGuiWindowFlags_NoResize
+            | ImGuiWindowFlags_NoMove
+            | ImGuiWindowFlags_NoBringToFrontOnFocus
+            | ImGuiWindowFlags_NoNavFocus;
+
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(viewport->WorkSize);
+        ImGui::SetNextWindowViewport(viewport->ID);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+        if (!opt_padding)
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+        ImGui::Begin("Main DockSpace", nullptr, window_flags);
+        if (!opt_padding)
+            ImGui::PopStyleVar();
+
+        ImGui::PopStyleVar(2);
+
+        //
+        // Set the class ID for the main frame so that we can decide who can dock with us
+        //
+        m_ImGuiClass.ClassId = ImGui::GetID("MainFrame");
+
+        static ImGuiID dockspace_id = ImGui::GetID("MainDockSpace");
+        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags, &m_ImGuiClass );
+        ImGui::End();
+    }
 
     //
     // Make the camera look at the center of the screen
@@ -155,74 +203,16 @@ bool base::BeginFrame( void )
     //
     m_View.setViewport( xcore::irect{ 0, 0, m_XGPUWindow.getWidth(), m_XGPUWindow.getHeight() } );
 
-    /*
-    auto CameraAngles   = m_View.getAngles(); 
-    CameraAngles.m_Yaw += xradian{ 1_deg };
-    m_View.LookAt( 4.5, CameraAngles, xvector3(0) );
-    */
-
     //
     // We are ready to beging rendering
     //
     onBegingRender();
 
-    /***********************
-    //
-    // Get imGuid ready for action
-    //
-    //ImGui_engBase_NewFrame();
-
-    //
-    // Need to create the maindoc window. This window will be consider our main application window.
-    // We need this because the docking system need a parent window to dock. So we will keep this
-    // maindoc window as big as the system window at all times.
-    // Since it is a fake window in a way we want to make sure that we dont render any background
-    // So we will make its background 100% transparent so we can see perfectly thought it.
-    // The docking also space also tries not render a the background so we will also make it 100%
-    // transparent.
-    //
-    const ImGuiStyle *  style               = &ImGui::GetStyle();
-    const ImColor       TempBgColor         = style->Colors[ImGuiCol_WindowBg];
-    const ImColor       TempChildBgColor    = style->Colors[ImGuiCol_ChildBg];
-
-    // Make sure that our main doc is as big as the system window 
-    ImGui::SetNextWindowPos( ImVec2(0,0) );
-    ImGui::SetWindowSize( "maindoc", ImVec2( (float)m_View.getViewport().getWidth(), (float)View.getViewport().getHeight()), 0 );
-
-    // make 100% transparent
-    static const ImVec4 col{0,0,0,0};
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, col);
-    ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, col);
-
-    // Now we can render the window which will take the hold screen
-    static bool bOPen = false;
-    ImGui::Begin( "maindoc", &bOPen, 
-        ImGuiSetCond_Always                     |
-        ImGuiWindowFlags_NoMove                 |
-        ImGuiWindowFlags_NoResize               |
-        ImGuiWindowFlags_NoInputs               |
-        ImGuiWindowFlags_NoTitleBar             |
-        ImGuiWindowFlags_NoSavedSettings        |
-        ImGuiWindowFlags_NoScrollbar            |
-        ImGuiWindowFlags_NoCollapse             |
-  //      ImGuiWindowFlags_MenuBar                |
-        ImGuiWindowFlags_NoFocusOnAppearing     |
-        ImGuiWindowFlags_AlwaysUseWindowPadding |
-        ImGuiWindowFlags_NoBringToFrontOnFocus );
-
-    // Start the doc space now  
-    ImGui::BeginDockspace();
-
-    // Restore the original colors of the theme
-    ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, TempChildBgColor);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, TempBgColor );
-    ***********************************/
-
     return false;
 }
 
 //-------------------------------------------------------------------------------------------
-void base::EndFrame( void )
+void main::EndFrame( void )
 {
     //
     // close the imgGui window
@@ -252,14 +242,14 @@ void base::EndFrame( void )
 
 //-------------------------------------------------------------------------------------------
 
-xcore::err base::CreateTab( const char* pString, /*ImGuiDockSlot Slot, */bool bActive) noexcept
+xcore::err main::CreateTab( const char* pString, /*ImGuiDockSlot Slot, */bool bActive) noexcept
 {
 
-    for( auto* pNext = xeditor::tab::type::getHead(); pNext; pNext = pNext->m_pNext )
+    for( auto* pNext = xeditor::frame::type::getHead(); pNext; pNext = pNext->m_pNext )
     {
         if ( xcore::string::FindStr( pNext->m_TypeName.m_pValue, pString ) >= 0 )
         {
-            auto& Entry = m_lTab.append( pNext->New( *this ) );
+            auto& Entry = m_lFrames.append( pNext->New( *this ) );
             
             //Entry->setupDockSlot( Slot );
             if( bActive ) 
@@ -275,7 +265,7 @@ xcore::err base::CreateTab( const char* pString, /*ImGuiDockSlot Slot, */bool bA
 
 //-------------------------------------------------------------------------------------------
 
-void base::onRenderWindows( void )
+void main::onRenderWindows( void )
 {
     //
     // Any mouse press should wake up the app
@@ -294,9 +284,9 @@ void base::onRenderWindows( void )
     //
     // Panels
     //
-    for( int i=0; i<m_lTab.size(); i++ )
+    for( int i=0; i<m_lFrames.size(); i++ )
     {
-        auto& xpTab = m_lTab[i];
+        auto& xpTab = m_lFrames[i];
         
         // Reset if the panel is visible or not
         xpTab->m_bPanelVisible = false;
@@ -309,20 +299,20 @@ void base::onRenderWindows( void )
 }
 
 //-------------------------------------------------------------------------------------------
-void base::onCloseProject( void )
+void main::onCloseProject( void )
 {
     //
     // Panels
     //
-    for( int i=0; i<m_lTab.size(); i++ )
+    for( int i=0; i<m_lFrames.size(); i++ )
     {
-        auto& xpTab = m_lTab[i];
+        auto& xpTab = m_lFrames[i];
         xpTab->onCloseProject();
     }
 }
 
 //-------------------------------------------------------------------------------------------
-bool base::onAdvanceLogic( void )
+bool main::onAdvanceLogic( void )
 {
     //
     // Close any tabs that need to be close first
@@ -336,12 +326,12 @@ bool base::onAdvanceLogic( void )
     //
     // Close any tabs that need to be close first
     //
-    for( int i=0; i<m_lTab.size(); i++ )
+    for( int i=0; i<m_lFrames.size(); i++ )
     {
-        auto& xpTab = m_lTab[i];
+        auto& xpTab = m_lFrames[i];
         if( xpTab->getType().m_Flags.m_bDeleteWhenClose )
         {
-            m_lTab.eraseCollapse(i);
+            m_lFrames.eraseCollapse(i);
             --i;
         }
     }
@@ -355,9 +345,9 @@ bool base::onAdvanceLogic( void )
     //
     // Run logic before trying to render anything
     //
-    for( int i=0; i<m_lTab.size(); i++ )
+    for( int i=0; i<m_lFrames.size(); i++ )
     {
-        auto& xpTab = m_lTab[i];
+        auto& xpTab = m_lFrames[i];
 
         if( xpTab->isOpen() )
         {
@@ -371,8 +361,10 @@ bool base::onAdvanceLogic( void )
     if( BeginFrame() )
         return true;
 
+
     static bool show_demo_window = true;
     ImGui::ShowDemoWindow(&show_demo_window);
+
 
     // Render windows
     onRenderWindows();

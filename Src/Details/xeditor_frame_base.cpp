@@ -1,7 +1,7 @@
 //-------------------------------------------------------------------------------------------
 //  Properties for the base doc must be in a global scope
 //-------------------------------------------------------------------------------------------
-property_begin_name(xeditor::tab::type, "BaseTab")
+property_begin_name(xeditor::frame::type, "BaseTab")
 {
     property_var_fnbegin("Name", xcore::cstring)
     {
@@ -10,19 +10,20 @@ property_begin_name(xeditor::tab::type, "BaseTab")
         .Flags(property::flags::SHOW_READONLY | property::flags::DONTSAVE)
         .Help("Name of the factory that generates Editor tabs for a particular type of tab")
 
-} property_vend_cpp(xeditor::tab::type)
+} property_vend_cpp(xeditor::frame::type)
 
 //-------------------------------------------------------------------------------------------
 // Back to the expected CPP
 //-------------------------------------------------------------------------------------------
-namespace xeditor::tab {
+namespace xeditor::frame {
 
 //-------------------------------------------------------------------------------------------
 
 type::type
 ( xcore::string::constant<char> GlobalRegString
 , xcore::string::constant<char> Str
-, tab::type_guid                     Guid
+, frame::type_guid              TypeGuid
+, frame::type_guid              ParentTypeGuid
 , type::flags                   Flags
 , int                           Weight
 , xcore::icolor                 Color 
@@ -30,7 +31,8 @@ type::type
 : xcore::property::base()
 , xcore::system::registration( nullptr, *this, xcore::string::const_universal{ GlobalRegString, L"Unnamed" } )
 , m_TypeName        { Str       }
-, m_TypeGuid            { Guid      }
+, m_TypeGuid        { TypeGuid  }
+, m_ParentTypeGuid  { ParentTypeGuid }
 , m_Flags           { Flags     }
 , m_Weight          { Weight    }
 , m_CustomBgColor   { Color     }
@@ -68,8 +70,8 @@ type::type
 
 //-------------------------------------------------------------------------------------------
 
-base::base( xcore::string::constant<char>& Str, instance_guid Guid, xeditor::frame::base& EditorFrame )
-: m_EditorFrame { EditorFrame }
+base::base( xcore::string::constant<char>& Str, instance_guid Guid, xeditor::frame::main& EditorFrame )
+: m_MainFrame { EditorFrame }
 , m_InstanceGuid{ Guid }
 {
     m_TabName = xcore::string::Fmt("%s##%u", Str.m_pValue, Guid.m_Value );
@@ -92,11 +94,31 @@ void base::Render( void )
         ImGui::PushStyleColor( ImGuiCol_ChildBg, Col );
     }
 
+    if( m_pParentImGuiClass == nullptr )
+    {
+        auto ParentGuid = getType().m_ParentTypeGuid;
+        if( ParentGuid == xeditor::frame::details::main_frame_class_guid_v )
+        {
+            m_pParentImGuiClass = &m_MainFrame.getImGuiClass();
+        }
+        else
+        {
+            m_pParentImGuiClass = &m_MainFrame.getImGuiClass( m_ParentInstanceGuid );
+        }
+
+        // Set our own ID as well... (if we have to)
+        if (Type.m_Flags.m_bParentFrame)
+        {
+            m_ImGuiClass.ClassId = ImGui::GetID(m_TabName);
+        }
+    }
+
+    ImGui::SetNextWindowClass(m_pParentImGuiClass);
     if ( m_bPanelVisible = ImGui::Begin( m_TabName, &m_OpenPanel, Type.m_Flags.m_bMenuBar?ImGuiWindowFlags_MenuBar:0 ) ) 
     {
-        if( Type.m_Flags.m_bTabContainer )
+        if( Type.m_Flags.m_bParentFrame )
         {
-             ////////////////ImGui::BeginDockspace();
+            ImGui::DockSpace(m_ImGuiClass.ClassId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_NoDockingInCentralNode, &m_ImGuiClass );
         }
 
         if( bEmptyProject == false )
@@ -111,22 +133,14 @@ void base::Render( void )
             }
         }
 
-        if( Type.m_Flags.m_bTabContainer )
-        {
-            //////////////ImGui::EndDockspace();
-        }
-
-
         ImGui::End();
     }
     
     if( m_bSetActive )
     {
         if(false == m_bFirstTimeRender) m_bSetActive = false;
-        ////////////ImGui::SetDockActive();
+        //ImGui::SetActive();
     }
-
-    //////////ImGui::EndDock();
 
     if( Type.m_Flags.m_bCustomBackgroundColor ) 
     {

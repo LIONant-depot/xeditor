@@ -30,7 +30,7 @@ void main::msgGlobalLog( const xcore::cstring& Str ) noexcept
 
 //---------------------------------------------------------------------------------------------------------
 
-main::main( xcore::string::constant<char> Str, xeditor::frame::base& Frame ) noexcept
+main::main( xcore::string::constant<char> Str, xeditor::frame::main& Frame ) noexcept
     : base( Str, *this )
     , m_Frame{ Frame }
 { 
@@ -80,7 +80,7 @@ main::main( xcore::string::constant<char> Str, xeditor::frame::base& Frame ) noe
     {
         XLOG_CHANNEL_INFO( m_LogChannel, "Initializing: %s", Entry.m_pType->m_TypeName.m_pValue );
         Entry.m_pType->Construct( *Entry.m_pBase, Entry.m_pType->m_TypeName, *this );
-        XLOG_CHANNEL_INFO(m_LogChannel, "Done Initializing: %s", Entry.m_pType->m_TypeName.m_pValue );
+        XLOG_CHANNEL_INFO( m_LogChannel, "Done Initializing: %s", Entry.m_pType->m_TypeName.m_pValue );
     }
 
     //

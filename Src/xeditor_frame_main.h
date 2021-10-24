@@ -1,23 +1,27 @@
 namespace xeditor::frame
 {
-    class base
+    class main
     {
     public:
+        constexpr static auto class_name_v = xcore::string::constant("MainFrame");
 
-                                                base                ( void ) = default;
-                                                base                ( xgpu::window& Window );
-        virtual                                ~base                ( void );
+
+                                                main                ( void ) = default;
+                                                main                ( xgpu::window& Window );
+        virtual                                ~main                ( void );
 //                        base&                   setupEngWindow      ( xgpu::window& Window );
                         bool                    AdvanceLogic        ( void );
-        inline         xeditor::document::main& getMainDoc          ( void )                                                                                    noexcept;
-                        xcore::err              CreateTab           ( const char* pString, bool bActive = false )                                               noexcept;
-        inline          auto&                   getTabList          ( void )                                                                                    noexcept;
-        xforceinline    xgpu::window&           getWindow           ( void )                                                                                    noexcept;
-        xforceinline    void                    Awake               ( void )                                                                                    noexcept;
+        inline         xeditor::document::main& getMainDoc          ( void )                                        noexcept;
+                        xcore::err              CreateTab           ( const char* pString, bool bActive = false )   noexcept;
+        inline          auto&                   getTabList          ( void )                                        noexcept;
+        xforceinline    xgpu::window&           getWindow           ( void )                                        noexcept;
+        xforceinline    void                    Awake               ( void )                                        noexcept;
         
         template< typename T > 
-        xforceinline    void                    appendDelayCmd      ( T&& Function )                                                                            noexcept;
-
+        xforceinline    void                    appendDelayCmd      ( T&& Function )                                noexcept;
+        inline          const ImGuiWindowClass& getImGuiClass       ( void ) const                                  noexcept{ return m_ImGuiClass; }
+        inline          const ImGuiWindowClass& getImGuiClass       ( frame::instance_guid ParentGuid ) const       noexcept;
+    
     protected:
 
         virtual         void                    onSetup             ( void );
@@ -40,11 +44,12 @@ namespace xeditor::frame
         xgpu::device                                                m_XGPUMouse                 {};
         xgpu::device                                                m_XGPUKeyboard              {};
         xgpu::tools::view                                           m_View                      {};
-        xcore::vector<std::unique_ptr<xeditor::tab::base>>          m_lTab                      {}; 
+        xcore::vector<std::unique_ptr<xeditor::frame::base>>        m_lFrames                   {}; 
         int                                                         m_CoolDown                  {10};
-        document::main::events::close_project::delegate             m_delegatemsgCloseProject   { this, &base::onCloseProject };
+        document::main::events::close_project::delegate             m_delegatemsgCloseProject   { this, &main::onCloseProject };
         xcore::vector<xcore::func<void(void)>>                      m_DelayCmds                 {};
-
+        ImGuiWindowClass                                            m_ImGuiClass                {};
+    
     public:
 
                         void                    _SystemMainInit      ( xeditor::document::main& MainDoc );
