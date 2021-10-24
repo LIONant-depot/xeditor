@@ -40,10 +40,10 @@ const type& main::getType( void ) const noexcept
 
 //-------------------------------------------------------------------------------------------
 
-type::type( xcore::string::constant<char> Str, guid ClassGuid, int Weight ) noexcept
+type::type( xcore::string::constant<char> Str, type_guid ClassGuid, int Weight ) noexcept
     : m_TypeName    { Str       }
     , m_Weight      { Weight    }
-    , m_Guid        { ClassGuid }
+    , m_TypeGuid        { ClassGuid }
     , m_pNext       { nullptr   }
 { 
     if( getHead() == nullptr )

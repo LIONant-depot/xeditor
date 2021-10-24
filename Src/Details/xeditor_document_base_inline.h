@@ -5,7 +5,7 @@ namespace xeditor::document // base
         template< typename T_TYPE >
         struct type_harness : type
         {
-            constexpr static auto class_guid_v = guid{ xeditor::document::type_guid_v, T_TYPE::class_name_v };
+            constexpr static auto class_guid_v = type_guid{ xeditor::document::type_guid_v, T_TYPE::class_name_v };
 
             type_harness( xcore::string::constant<char> Str, int Weight = 0 ) noexcept
                 : type(Str, class_guid_v, Weight )

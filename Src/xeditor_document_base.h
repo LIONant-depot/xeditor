@@ -1,21 +1,22 @@
 namespace xeditor::document
 {
-    using                   group_guid  = xcore::guid::group< struct xeditor_document_tag >;
-    constexpr static auto   type_guid_v = group_guid{ "base::document" };
-    using                   guid        = xcore::guid::subgroup<group_guid>;
+    using                   plugin_group_guid   = xcore::guid::group< struct xeditor_document_tag >;
+    constexpr static auto   type_guid_v         = plugin_group_guid{ "base::document" };
+    using                   type_guid           = xcore::guid::subgroup<plugin_group_guid>;
+    using                   instance_guid       = xcore::guid::unit<64, struct tab_instance_guid_tag >;
 
     //--------------------------------------------------------------------------------------------
 
     struct type
     {
-                                                    type        ( xcore::string::constant<char> Str, guid ClassGuid, int Weight = 0 )           noexcept;
+                                                    type        ( xcore::string::constant<char> Str, type_guid ClassGuid, int Weight = 0 )           noexcept;
         static                  type*&              getHead     ( void )                                                                        noexcept;
         virtual                 void                Construct   ( base& Base, xcore::string::constant<char> Str, main& MainDoc )        const   noexcept = 0;
         virtual                 base*               Malloc      ( void )                                                                const   noexcept = 0;
 
         type*                                   m_pNext         { nullptr };
         const xcore::string::constant<char>     m_TypeName;
-        guid                                    m_Guid;
+        type_guid                               m_TypeGuid;
         const int                               m_Weight;
     };
 
@@ -31,7 +32,7 @@ namespace xeditor::document
 
     public:
 
-        using guid = xeditor::document::guid;
+        using guid = xeditor::document::type_guid;
 
     public:
 

@@ -22,7 +22,7 @@ namespace xeditor::tab {
 type::type
 ( xcore::string::constant<char> GlobalRegString
 , xcore::string::constant<char> Str
-, guid                          Guid
+, tab::type_guid                     Guid
 , type::flags                   Flags
 , int                           Weight
 , xcore::icolor                 Color 
@@ -30,7 +30,7 @@ type::type
 : xcore::property::base()
 , xcore::system::registration( nullptr, *this, xcore::string::const_universal{ GlobalRegString, L"Unnamed" } )
 , m_TypeName        { Str       }
-, m_Guid            { Guid      }
+, m_TypeGuid            { Guid      }
 , m_Flags           { Flags     }
 , m_Weight          { Weight    }
 , m_CustomBgColor   { Color     }
@@ -68,10 +68,11 @@ type::type
 
 //-------------------------------------------------------------------------------------------
 
-base::base( xcore::string::constant<char>& Str, xeditor::frame::base& EditorFrame )
-: m_EditorFrame{ EditorFrame }
+base::base( xcore::string::constant<char>& Str, instance_guid Guid, xeditor::frame::base& EditorFrame )
+: m_EditorFrame { EditorFrame }
+, m_InstanceGuid{ Guid }
 {
-    m_TabName = xcore::string::Fmt("%s##%p", Str.m_pValue, this);
+    m_TabName = xcore::string::Fmt("%s##%u", Str.m_pValue, Guid.m_Value );
 }
 
 //-------------------------------------------------------------------------------------------
@@ -91,8 +92,7 @@ void base::Render( void )
         ImGui::PushStyleColor( ImGuiCol_ChildBg, Col );
     }
 
-
-    if ( m_bPanelVisible /*= ImGui::BeginDock( m_TabName, &m_OpenPanel, Type.m_Flags.m_bMenuBar?ImGuiWindowFlags_MenuBar:0 )*/ ) 
+    if ( m_bPanelVisible = ImGui::Begin( m_TabName, &m_OpenPanel, Type.m_Flags.m_bMenuBar?ImGuiWindowFlags_MenuBar:0 ) ) 
     {
         if( Type.m_Flags.m_bTabContainer )
         {
@@ -115,6 +115,9 @@ void base::Render( void )
         {
             //////////////ImGui::EndDockspace();
         }
+
+
+        ImGui::End();
     }
     
     if( m_bSetActive )

@@ -102,7 +102,7 @@ namespace xeditor::document  // main
         for (auto& EditorPair : m_lxpSubEditors)
         {
             auto& Type = *EditorPair.m_pType;
-            if (class_guid_v == Type.getGuid())
+            if( class_guid_v == Type.m_TypeGuid )
             {
                 return *reinterpret_cast<T*>(EditorPair.m_pBase);
             }

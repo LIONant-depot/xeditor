@@ -2,6 +2,8 @@
 #define XEDITOR_H
 #pragma once
 
+#define XEDITOR_JOIN_STR(...) __VA_ARGS__
+
 //
 // System Includes
 //

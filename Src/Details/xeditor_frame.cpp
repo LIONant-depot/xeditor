@@ -66,13 +66,18 @@ void base::onSetup( void )
 
 void base::InitializeImGui( void )
 {
-    if( auto Err = xgpu::tools::imgui::CreateInstance( m_XGPUWindow ); Err )
-        throw(std::runtime_error( xgpu::getErrorMsg(Err) ));
+    //
+    // Create IMGUI context outside the breach since we are going to be setting some fonts
+    //
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
 
     //
     // Add fonts
     //
     ImGuiIO& io = ImGui::GetIO();
+
+    io.Fonts->Clear();
     io.Fonts->AddFontDefault();
 
     // merge in icons from Font Awesome
@@ -80,9 +85,9 @@ void base::InitializeImGui( void )
         static constexpr auto icons_ranges_fontawesome     = std::array{ ImWchar{ICON_MIN_FA}, ImWchar{ICON_MAX_FA}, ImWchar{0} };
         static constexpr auto icons_ranges_kenney          = std::array{ ImWchar{ICON_MIN_KI}, ImWchar{ICON_MAX_KI}, ImWchar{0} };
         static constexpr auto icons_ranges_materialdesign  = std::array{ ImWchar{ICON_MIN_MD}, ImWchar{ICON_MAX_MD}, ImWchar{0} };
-        ImFontConfig icons_config;
+        ImFontConfig icons_config{};
         icons_config.MergeMode = true;
-        icons_config.PixelSnapH = true;
+        icons_config.GlyphOffset.y = 2;
 
         io.Fonts->AddFontFromMemoryCompressedTTF
         ( fa_solid_900_compressed_data
@@ -91,7 +96,7 @@ void base::InitializeImGui( void )
         , &icons_config
         , icons_ranges_fontawesome.data()
         );
-
+       
         io.Fonts->AddFontFromMemoryCompressedTTF
         ( kenney_icon_font_compressed_data
         , kenney_icon_font_compressed_size
@@ -107,13 +112,18 @@ void base::InitializeImGui( void )
         , &icons_config
         , icons_ranges_materialdesign.data()
         );
-
-        io.Fonts->Build();
-
-        //io.Fonts->AddFontFromFileTTF( "fontawesome-webfont.ttf", 14.0f, &icons_config, icons_ranges_fontawesome.data());
-        //io.Fonts->AddFontFromFileTTF( "../kenney-icon-font.ttf",    16.0f, &icons_config, icons_ranges_kenney);
-        //io.Fonts->AddFontFromFileTTF( "../MaterialIcons-Regular.ttf", 13.0f, &icons_config, icons_ranges_materialdesign);
     }
+
+    //
+    // Build the font
+    //
+     io.Fonts->Build();
+
+     //
+     // Initialize the breach officially 
+     //
+     if (auto Err = xgpu::tools::imgui::CreateInstance(m_XGPUWindow); Err)
+         throw(std::runtime_error(xgpu::getErrorMsg(Err)));
 }
 
 //-------------------------------------------------------------------------------------------
@@ -232,7 +242,7 @@ void base::EndFrame( void )
     //
     // Draw the gui
     //
-    ImGui::Render();
+    xgpu::tools::imgui::Render();
 
     //
     // Tell the engine we are done rendering
@@ -244,21 +254,22 @@ void base::EndFrame( void )
 
 xcore::err base::CreateTab( const char* pString, /*ImGuiDockSlot Slot, */bool bActive) noexcept
 {
-/*
-    for( auto* pNext = xeditor::plugins::tab::type::getHead(); pNext; pNext = pNext->m_pNext )
+
+    for( auto* pNext = xeditor::tab::type::getHead(); pNext; pNext = pNext->m_pNext )
     {
-        if ( x_strstr<xchar>( pNext->m_TypeName.m_pValue, pString ) >= 0 )
+        if ( xcore::string::FindStr( pNext->m_TypeName.m_pValue, pString ) >= 0 )
         {
             auto& Entry = m_lTab.append( pNext->New( *this ) );
-            Entry->setupDockSlot( Slot );
+            
+            //Entry->setupDockSlot( Slot );
             if( bActive ) 
             {
                 Entry->setActive();
             }
-            return err::state::OK;
+            return {};
         }
     }
-*/
+
     return xerr_failure_s( "Count not find the tab" );
 }
 
@@ -359,6 +370,9 @@ bool base::onAdvanceLogic( void )
     //
     if( BeginFrame() )
         return true;
+
+    static bool show_demo_window = true;
+    ImGui::ShowDemoWindow(&show_demo_window);
 
     // Render windows
     onRenderWindows();
