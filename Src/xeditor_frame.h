@@ -1,14 +1,14 @@
-namespace xeditor::frame
+namespace xeditor
 {
-    class main
+    class frame
     {
     public:
-        constexpr static auto class_name_v = xcore::string::constant("MainFrame");
+        constexpr static auto class_name_v = xcore::string::constant("AppFrame");
 
 
-                                                main                ( void ) = default;
-                                                main                ( xgpu::window& Window );
-        virtual                                ~main                ( void );
+                                                frame                ( void ) = default;
+                                                frame                ( xgpu::window& Window );
+        virtual                                ~frame                ( void );
 //                        base&                   setupEngWindow      ( xgpu::window& Window );
                         bool                    AdvanceLogic        ( void );
         inline         xeditor::document::main& getMainDoc          ( void )                                        noexcept;
@@ -20,7 +20,7 @@ namespace xeditor::frame
         template< typename T > 
         xforceinline    void                    appendDelayCmd      ( T&& Function )                                noexcept;
         inline          const ImGuiWindowClass& getImGuiClass       ( void ) const                                  noexcept;
-        inline          const ImGuiWindowClass& getImGuiClass       ( frame::instance_guid ParentGuid ) const       noexcept;
+        inline          const ImGuiWindowClass& getImGuiClass       ( panel::instance_guid ParentGuid ) const       noexcept;
     
     protected:
 
@@ -44,9 +44,9 @@ namespace xeditor::frame
         xgpu::device                                                m_XGPUMouse                 {};
         xgpu::device                                                m_XGPUKeyboard              {};
         xgpu::tools::view                                           m_View                      {};
-        xcore::vector<std::unique_ptr<xeditor::frame::base>>        m_lFrames                   {}; 
+        xcore::vector<std::unique_ptr<xeditor::panel::parent>>      m_lPanels                   {}; 
         int                                                         m_CoolDown                  {10};
-        document::main::events::close_project::delegate             m_delegatemsgCloseProject   { this, &main::onCloseProject };
+        document::main::events::close_project::delegate             m_delegatemsgCloseProject   { this, &frame::onCloseProject };
         xcore::vector<xcore::func<void(void)>>                      m_DelayCmds                 {};
         ImGuiWindowClass                                            m_ImGuiClass                {};
     

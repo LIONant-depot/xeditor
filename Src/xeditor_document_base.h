@@ -33,6 +33,7 @@ namespace xeditor::document
     public:
 
         using guid = xeditor::document::type_guid;
+        using type = xeditor::document::type;
 
     public:
 

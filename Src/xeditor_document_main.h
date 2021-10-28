@@ -57,8 +57,8 @@ namespace xeditor::document
     public:
 
                                                 main                        ( xcore::string::constant<char> Str
-                                                                            , xeditor::frame::main&         Frame )                 noexcept;
-        inline                                  main                        ( xeditor::frame::main& Frame )                         noexcept;
+                                                                            , xeditor::frame& Frame )                               noexcept;
+        inline                                  main                        ( xeditor::frame& Frame )                               noexcept;
         virtual                                ~main                        ( void )                                                noexcept;
         inline                  auto&           setupProjectFileExt         ( const path::project Extension )                       noexcept;
         
@@ -117,7 +117,7 @@ namespace xeditor::document
 
     protected:
 
-        xeditor::frame::main&                           m_Frame;
+        xeditor::frame&                                 m_Frame;
         xcore::vector<table_entry>                      m_lxpSubEditors         {};
         events::log_msg::delegate                       m_GlobalLogDelegate     { this, &main::msgGlobalLog };
 

@@ -10,6 +10,6 @@
 #include "details/xeditor_document_main.cpp"
 #include "details/xeditor_ui.cpp"
 #include "details/xeditor_command.cpp"
-#include "details/xeditor_frame_main.cpp"
-#include "details/xeditor_frame_base.cpp"
+#include "details/xeditor_frame.cpp"
+#include "details/xeditor_panel.cpp"
 

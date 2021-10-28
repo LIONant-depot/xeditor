@@ -34,14 +34,15 @@ namespace xeditor::command
     class system;
 }
 
-namespace xeditor::frame
+namespace xeditor
 {
-    class main;
+    class frame;
 }
 
-namespace xeditor::frame
+namespace xeditor::panel
 {
-    class base;
+    class parent;
+    class child;
 }
 
 //
@@ -50,8 +51,8 @@ namespace xeditor::frame
 #include "xeditor_command.h"
 #include "xeditor_document_base.h"
 #include "xeditor_document_main.h"
-#include "xeditor_frame_base.h"
-#include "xeditor_frame_main.h"
+#include "xeditor_panel.h"
+#include "xeditor_frame.h"
 #include "xeditor_ui.h"
 
 //
@@ -60,7 +61,7 @@ namespace xeditor::frame
 #include "details/xeditor_document_base_inline.h"
 #include "details/xeditor_document_main_inline.h"
 #include "details/xeditor_ui_inline.h"
-#include "details/xeditor_frame_main_inline.h"
-#include "details/xeditor_frame_base_inline.h"
+#include "details/xeditor_frame_inline.h"
+#include "details/xeditor_panel_inline.h"
 
 #endif

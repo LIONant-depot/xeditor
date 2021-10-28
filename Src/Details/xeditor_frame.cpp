@@ -1,10 +1,10 @@
 
 #include "../dependencies/xGPU/Tools/xgpu_imgui_breach.cpp"
 
-namespace xeditor::frame {
+namespace xeditor {
 
 //-------------------------------------------------------------------------------------------
-main::~main( void )
+frame::~frame( void )
 {
     //
     // Shut down
@@ -14,12 +14,12 @@ main::~main( void )
 
 //-------------------------------------------------------------------------------------------
 
-void main::_SystemMainInit( xeditor::document::main& MainDoc )
+void frame::_SystemMainInit( xeditor::document::main& MainDoc )
 {
     m_pDocument = &MainDoc;
     m_delegatemsgCloseProject.Connect( MainDoc.m_Events.m_CloseProject );
 
-    for( auto* pNext = xeditor::frame::type::getHead(); pNext; pNext = pNext->m_pNext )
+    for( auto* pNext = xeditor::panel::type::getHead(); pNext; pNext = pNext->m_pNext )
     {
         pNext->RegisterSystem();
     }
@@ -27,7 +27,7 @@ void main::_SystemMainInit( xeditor::document::main& MainDoc )
 
 //-------------------------------------------------------------------------------------------
 
-main::main( xgpu::window& Window )
+frame::frame( xgpu::window& Window )
 { 
     //
     // Save the window
@@ -50,21 +50,21 @@ main::main( xgpu::window& Window )
 
 //-------------------------------------------------------------------------------------------
 
-bool main::AdvanceLogic( void )
+bool frame::AdvanceLogic( void )
 { 
     return onAdvanceLogic(); 
 }
 
 //-------------------------------------------------------------------------------------------
 
-void main::onSetup( void )
+void frame::onSetup( void )
 {
     InitializeImGui();
 }
 
 //-------------------------------------------------------------------------------------------
 
-void main::InitializeImGui( void )
+void frame::InitializeImGui( void )
 {
     //
     // Create IMGUI context outside the breach since we are going to be setting some fonts
@@ -133,20 +133,20 @@ void main::InitializeImGui( void )
 
 //-------------------------------------------------------------------------------------------
 
-void main::onBegingRender( void )
+void frame::onBegingRender( void )
 {
 //    m_Window->BeginRender( m_View );
 }
 
 //-------------------------------------------------------------------------------------------
-void main::onEndRender( void )
+void frame::onEndRender( void )
 {
     m_XGPUWindow.PageFlip();
 }
 
 //-------------------------------------------------------------------------------------------
 
-bool main::BeginFrame( void )
+bool frame::BeginFrame( void )
 {
     //
     // Check if we need to render
@@ -159,7 +159,7 @@ bool main::BeginFrame( void )
     //
     {
         constexpr bool                  opt_padding = false;
-        constexpr ImGuiDockNodeFlags    dockspace_flags = ImGuiDockNodeFlags_AutoHideTabBar
+        constexpr ImGuiDockNodeFlags    dockspace_flags = 0 // ImGuiDockNodeFlags_AutoHideTabBar
             | ImGuiDockNodeFlags_PassthruCentralNode;
         constexpr ImGuiWindowFlags      window_flags = ImGuiWindowFlags_MenuBar
             | ImGuiWindowFlags_NoDocking
@@ -190,6 +190,7 @@ bool main::BeginFrame( void )
         //
         // Set the class ID for the main frame so that we can decide who can dock with us
         //
+        m_ImGuiClass.DockingAllowUnclassed = false;
         m_ImGuiClass.ClassId = ImGui::GetID("MainFrame");
 
         static ImGuiID dockspace_id = ImGui::GetID("MainDockSpace");
@@ -212,7 +213,7 @@ bool main::BeginFrame( void )
 }
 
 //-------------------------------------------------------------------------------------------
-void main::EndFrame( void )
+void frame::EndFrame( void )
 {
     //
     // close the imgGui window
@@ -242,17 +243,17 @@ void main::EndFrame( void )
 
 //-------------------------------------------------------------------------------------------
 
-xcore::err main::CreateTab( const char* pString, /*ImGuiDockSlot Slot, */bool bActive) noexcept
+xcore::err frame::CreateTab( const char* pString, /*ImGuiDockSlot Slot, */bool bActive) noexcept
 {
-
-    for( auto* pNext = xeditor::frame::type::getHead(); pNext; pNext = pNext->m_pNext )
+    for( auto* pNext = xeditor::panel::type::getHead(); pNext; pNext = pNext->m_pNext )
     {
         if ( xcore::string::FindStr( pNext->m_TypeName.m_pValue, pString ) >= 0 )
         {
-            auto& Entry = m_lFrames.append( pNext->New( *this ) );
+            auto& Entry = m_lPanels.append( pNext->New( *this ) );
             
-            //Entry->setupDockSlot( Slot );
-            if( bActive ) 
+            Entry->onCreateChildrenPanels();
+
+            if( bActive )
             {
                 Entry->setActive();
             }
@@ -265,7 +266,7 @@ xcore::err main::CreateTab( const char* pString, /*ImGuiDockSlot Slot, */bool bA
 
 //-------------------------------------------------------------------------------------------
 
-void main::onRenderWindows( void )
+void frame::onRenderWindows( void )
 {
     //
     // Any mouse press should wake up the app
@@ -284,9 +285,9 @@ void main::onRenderWindows( void )
     //
     // Panels
     //
-    for( int i=0; i<m_lFrames.size(); i++ )
+    for( int i=0; i<m_lPanels.size(); i++ )
     {
-        auto& xpTab = m_lFrames[i];
+        auto& xpTab = m_lPanels[i];
         
         // Reset if the panel is visible or not
         xpTab->m_bPanelVisible = false;
@@ -299,20 +300,20 @@ void main::onRenderWindows( void )
 }
 
 //-------------------------------------------------------------------------------------------
-void main::onCloseProject( void )
+void frame::onCloseProject( void )
 {
     //
     // Panels
     //
-    for( int i=0; i<m_lFrames.size(); i++ )
+    for( int i=0; i<m_lPanels.size(); i++ )
     {
-        auto& xpTab = m_lFrames[i];
+        auto& xpTab = m_lPanels[i];
         xpTab->onCloseProject();
     }
 }
 
 //-------------------------------------------------------------------------------------------
-bool main::onAdvanceLogic( void )
+bool frame::onAdvanceLogic( void )
 {
     //
     // Close any tabs that need to be close first
@@ -326,12 +327,12 @@ bool main::onAdvanceLogic( void )
     //
     // Close any tabs that need to be close first
     //
-    for( int i=0; i<m_lFrames.size(); i++ )
+    for( int i=0; i<m_lPanels.size(); i++ )
     {
-        auto& xpTab = m_lFrames[i];
-        if( xpTab->getType().m_Flags.m_bDeleteWhenClose )
+        auto& xpTab = m_lPanels[i];
+        if( xpTab->m_Type.m_Flags.m_bDeleteWhenClose )
         {
-            m_lFrames.eraseCollapse(i);
+            m_lPanels.eraseCollapse(i);
             --i;
         }
     }
@@ -345,9 +346,9 @@ bool main::onAdvanceLogic( void )
     //
     // Run logic before trying to render anything
     //
-    for( int i=0; i<m_lFrames.size(); i++ )
+    for( int i=0; i<m_lPanels.size(); i++ )
     {
-        auto& xpTab = m_lFrames[i];
+        auto& xpTab = m_lPanels[i];
 
         if( xpTab->isOpen() )
         {

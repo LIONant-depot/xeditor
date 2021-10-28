@@ -2,7 +2,7 @@ namespace xeditor::document  // main
 {
     //---------------------------------------------------------------------------------------------------------
 
-    main::main( xeditor::frame::main& Frame ) noexcept 
+    main::main( xeditor::frame& Frame ) noexcept 
         : main(class_name_v, Frame )
     {}
 

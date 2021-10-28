@@ -30,7 +30,7 @@ void main::msgGlobalLog( const xcore::cstring& Str ) noexcept
 
 //---------------------------------------------------------------------------------------------------------
 
-main::main( xcore::string::constant<char> Str, xeditor::frame::main& Frame ) noexcept
+main::main( xcore::string::constant<char> Str, xeditor::frame& Frame ) noexcept
     : base( Str, *this )
     , m_Frame{ Frame }
 { 
