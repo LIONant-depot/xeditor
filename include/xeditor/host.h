@@ -12,7 +12,9 @@ namespace xeditor {
 class host {
 public:
     xundo::system m_Workspace;
+    xundo::system* m_pExternalWorkspace = nullptr; // E29Undo etc.
     std::vector<std::unique_ptr<session>> m_Sessions;
+    xundo::system& workspace() noexcept { return m_pExternalWorkspace ? *m_pExternalWorkspace : m_Workspace; }
 
     session* find_by_guid(xresource::full_guid G) noexcept {
         for (auto& S : m_Sessions)
@@ -57,8 +59,8 @@ public:
         if (Line.empty()) return {};
         if (Line == "help") {
             std::string R = "Workspace: bare Command or Host\\Command. Session: Name\\Command.\n";
-            for (auto& N : m_Workspace.GetEditCommandNames()) R += N + "\n";
-            for (auto& N : m_Workspace.GetQueryCommandNames()) R += N + "\n";
+            for (auto& N : workspace().GetCommandNames()) R += N + "\n";
+            for (auto& N : workspace().GetQueryCommandNames()) R += N + "\n";
             R += "Sessions:\n";
             for (auto& S : m_Sessions) if (S->m_Document) R += "  " + S->display_name() + "\n";
             return R;
@@ -83,12 +85,12 @@ public:
             auto Target = Line.substr(0, Slash);
             auto Rest = Line.substr(Slash + 1);
             if (Target == "Host" || Target == ".")
-                return run_on(m_Workspace, std::string(Rest));
+                return run_on(workspace(), std::string(Rest));
             auto* S = find_by_name(Target);
             if (!S) return std::string("No open session '") + std::string(Target) + "'. Use list.\n";
             return run_on(S->m_Undo, std::string(Rest));
         }
-        return run_on(m_Workspace, std::string(Line));
+        return run_on(workspace(), std::string(Line));
     }
 };
 }
