@@ -15,6 +15,7 @@
 #include <cstdio>
 
 #include <string>
+#include <functional>
 
 #include <string_view>
 
@@ -35,6 +36,14 @@ namespace xeditor
         xundo::system                         m_Workspace;
 
         xundo::system*                        m_pExternalWorkspace = nullptr;
+
+        // Domain host services (E29 wires Idle Work / SC idle / Game.dll focus-reload).
+        std::function<void()> m_OnPumpServices;
+        std::function<void()> m_OnFocusRegain;
+
+        void pump_services() noexcept { if (m_OnPumpServices) m_OnPumpServices(); }
+        void on_focus_regain() noexcept { if (m_OnFocusRegain) m_OnFocusRegain(); }
+
 
         std::vector<std::unique_ptr<session>> m_Sessions;
 
