@@ -338,14 +338,14 @@ Embedded viewers, thumbnails, asset-browser open, more resource types (E19/E20/�
 
 ## 13. Acceptance checklist (before calling Deliverable 1 done)
 
-- [ ] Public headers build as a library consumed by xGPU Debug  
-- [ ] `xeditorcli` talks to a running host (GUI or E30)  
-- [ ] `Name\Command` routes to the correct session’s undo system  
-- [ ] Dock isolation helper usable by a sample full editor  
-- [ ] Headless host runs without creating a window/ImGui  
-- [ ] DESIGN.md + short README “how to add an editor”  
+- [x] Public headers build as a library consumed by xGPU Debug
+- [x] `xeditorcli` talks to a running host (GUI) — pipe `\\.\pipe\xEditor_Console` (E29 listens here; E29CLI is a thin alias)
+- [x] `Name\Command` routes to the correct session's undo system
+- [x] Dock isolation helper usable by a sample full editor (Level + Texture via `FinishFullEditorDockspace`)
+- [ ] Headless host runs without creating a window/ImGui — **E30** (not Deliverable 1 blocking for E29 GUI proof)
+- [x] DESIGN.md + short README "how to add an editor"
 
-Deliverable 2 adds E29+Texture parity checks (manual smoke + existing E29 smokes still meaningful).
+Deliverable 2 (E29+Texture parity): Level/Texture on host, document vs workspace undo split, idle/Game.dll hooks, modern CLI via `host::dispatch` with legacy `E29/...` kept for AI — **shipped 2026-09-20**. Remaining polish is optional bootstrap thinning and E30.
 
 ---
 
