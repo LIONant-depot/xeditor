@@ -6,5 +6,6 @@
 #include "session.h"
 #include "host.h"
 #include "dock_isolation.h"
+#include "full_editor_shell.h"
 #include "console.h"
 #endif
