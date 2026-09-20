@@ -1,6 +1,6 @@
 # xeditor - Design (modern editor framework)
 
-**Status:** living design - Deliverable 1-2 proving port shipped; Host Drawer / Level-as-peer (2.2, 4.5-4.7, Phase D) awaiting implementation
+**Status:** Deliverable 1-2 **closed** (E29+Texture on host). Host Drawer / Level-as-peer locked in 2.2 + 4.5-4.7; **Phase D is the next journey** (not started).
 **Repo / work tree:** `xGPU/dependencies/xeditor` -> [LIONant-depot/xeditor](https://github.com/LIONant-depot/xeditor) (this is the dependency E29 links; replaces the legacy `Src/` tree when the new library ships)
 **Related:** `xGPU/Build/EDITOR_VIEWER_FRAMEWORK_PROBLEM_STATEMENT.md` (requirements spine; this doc is the concrete API + migration plan)  
 **Date:** 2026-09-20; addendum 2026-09-21  
@@ -466,3 +466,13 @@ Please confirm or amend:
 ---
 
 *Last design addendum: Host Drawer + peer editors + edit/view + Play - 2026-09-21.*
+
+---
+
+## 16. Journey close (2026-09-21)
+
+**Done (this journey):** Modern `xeditor` library spine; E29 Level + Texture as peer-shaped sessions on `host`; dual CLI planes; idle/Game.dll hooks; E29CLI thin shim; shutdown/UAF fixes; acceptance checklist for Deliverable 1-2.
+
+**Designed, not built:** Host Drawer (one logical drawer, per-OS-window manifestation), Level demoted from shell to peer editor UI, edit/view write locks (scenes + all resources), single Play. That is **Phase D** — open a new session when ready to implement.
+
+**Tips to reopen Phase D:** `xeditor` DESIGN sections 2.2 / 4.5-4.7 / Phase D; xGPU proving port around `088282d`; Texture plugin descriptor + borrowed sessions.
