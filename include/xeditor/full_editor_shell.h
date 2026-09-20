@@ -15,6 +15,24 @@
 
 namespace xeditor {
 
+// Main viewport host dockspace created by xgpu::tools::imgui::EnableDocking()
+// ("Main DockSpace" / GetID("MainDockSpace")). Peer editors (Level, Texture, ...)
+// should SetNextWindowDockID here on first use so they open as tabs, not floating.
+inline ImGuiID GetMainHostDockspaceId() noexcept
+{
+    ImGuiWindow* pHost = ImGui::FindWindowByName("Main DockSpace");
+    if (pHost == nullptr) return 0;
+    return pHost->GetID("MainDockSpace");
+}
+
+inline void SetNextPeerEditorDockedInMainHost(ImGuiCond Cond = ImGuiCond_FirstUseEver) noexcept
+{
+    const ImGuiID DockId = GetMainHostDockspaceId();
+    if (DockId != 0)
+        ImGui::SetNextWindowDockID(DockId, Cond);
+}
+
+
 inline void PushFullEditorRootStyle() noexcept
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
