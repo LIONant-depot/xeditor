@@ -46,7 +46,7 @@ Added: host/workspace CLI plane for non-resource commands (6.2-6.3) and Phase C 
 | Level is not the core | **Level is a peer editor** like Texture. It must not own the process shell. |
 | Real core (host services) | Resources, Assets, Source Control, Idle Work, Log, Commands, Compilation, Project Settings - plus the process CLI/workspace undo plane. |
 | Drawer | Unreal Content Drawer-like **edge overlay** toggled with **Space** (focus-gated: not while typing in text fields). Children dock **only inside** the drawer. |
-| Per window | Drawer opens in the **focused OS/ImGui root window only**, not every window. A floated Texture window has its own drawer instance. |
+| Per OS window | **One logical drawer** (shared services/tabs identity). It **manifests** in OS windows: Space toggles the manifestation in the **focused OS window only**. At most **one manifestation per OS window**. Floated Texture = separate OS window, so its Space shows the same drawer there — not a second drawer product. |
 | Edge + size | User-chosen edge (default bottom). "Resize" = distance from that edge; the other axis stays near max. Remember size/edge per window. |
 | Local clones | Any editor may open a *local* Resources (etc.) panel docked only in **that editor's** dockspace. Same UI type; different ownership; no cross-dock into drawer or other editors. |
 | Play | **Belongs to the Level editor** UI. Process-wide: **at most one Play** even if many Level editors are open. |
@@ -134,7 +134,7 @@ Clarify the three layers that E29 currently conflates:
 | **Host process** | One process, one CLI pipe, workspace undo, shared services | `xeditorcli`, scheduler, lib mgr |
 | **Host window** | One OS / ImGui root viewport (main app or a floated editor window) | Main frame; undocked Texture window |
 | **Peer editor** | Full-editor shell for **one** resource session | Level, Texture, future types |
-| **Drawer** | Per-host-window edge overlay for **process services** UI | Resources, SC, Idle, Log, Commands, ... |
+| **Drawer** | One logical edge-overlay for **process services**; manifested per OS window | Resources, SC, Idle, Log, Commands, ... |
 
 **Level is not the core editor.** It is a peer full-editor like Texture. The "Parent Editor" dock that today owns Resources / SC / Log / Commands / Idle while also hosting Level must be split:
 
@@ -160,9 +160,13 @@ Any peer editor may spawn a **local** Resources / Log / ... panel docked only in
 - Cannot drag into the drawer or into another editor.
 - Closing the editor destroys its local panels; the window's drawer remains.
 
-#### Multi-window
+#### Multi-window (OS windows)
 
-If Texture is floated to its own OS window, that window has its **own drawer** (own edge/size memory). Opening the drawer there does not open it on the main window. Process services behind the UI stay shared (one SC system, one compile queue); each drawer is a **view** onto them.
+- There is **one drawer** in the host (one service UI identity).
+- Each **OS window** may host **at most one local manifestation** of that drawer (open/closed, edge, depth remembered **per OS window**).
+- Space in OS window A opens/closes only A's manifestation; window B is unchanged.
+- Manifestations share the same underlying services (one SC, one compile queue, same tab set). They are not independent drawer products.
+- "Window" here always means **OS window** (ImGui viewport / platform window), not an editor dock root inside a single OS window.
 
 ### 4.6 Play policy (Level)
 
