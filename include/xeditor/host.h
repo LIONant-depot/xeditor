@@ -44,6 +44,63 @@ namespace xeditor
         void pump_services() noexcept { if (m_OnPumpServices) m_OnPumpServices(); }
         void on_focus_regain() noexcept { if (m_OnFocusRegain) m_OnFocusRegain(); }
 
+        // --- Edit vs view write locks (DESIGN 4.2) ---
+        struct write_lock
+        {
+            xresource::full_guid guid{};
+            session*             pWriter = nullptr;
+        };
+        std::vector<write_lock> m_WriteLocks;
+
+        session* writer_for(xresource::full_guid Guid) const noexcept
+        {
+            for (const auto& L : m_WriteLocks)
+                if (L.guid == Guid) return L.pWriter;
+            return nullptr;
+        }
+
+        bool can_write(xresource::full_guid Guid, session* pSession) const noexcept
+        {
+            session* pW = writer_for(Guid);
+            return pW == nullptr || pW == pSession;
+        }
+
+        // First mutator wins; returns false if another session holds the lock.
+        bool try_acquire_write(xresource::full_guid Guid, session* pSession) noexcept
+        {
+            if (pSession == nullptr || Guid.empty()) return false;
+            session* pW = writer_for(Guid);
+            if (pW == pSession) return true;
+            if (pW != nullptr) return false;
+            m_WriteLocks.push_back(write_lock{ Guid, pSession });
+            return true;
+        }
+
+        void release_write(xresource::full_guid Guid, session* pSession) noexcept
+        {
+            m_WriteLocks.erase(std::remove_if(m_WriteLocks.begin(), m_WriteLocks.end(),
+                [&](const write_lock& L) { return L.guid == Guid && L.pWriter == pSession; }),
+                m_WriteLocks.end());
+        }
+
+        // --- Play singleton (DESIGN 4.6) — opaque owner (e.g. &editor_state) ---
+        void* m_pPlayOwner = nullptr;
+
+        bool try_begin_play(void* pOwner) noexcept
+        {
+            if (pOwner == nullptr) return false;
+            if (m_pPlayOwner != nullptr && m_pPlayOwner != pOwner) return false;
+            m_pPlayOwner = pOwner;
+            return true;
+        }
+
+        void end_play(void* pOwner) noexcept
+        {
+            if (m_pPlayOwner == pOwner) m_pPlayOwner = nullptr;
+        }
+
+        bool is_play_active() const noexcept { return m_pPlayOwner != nullptr; }
+
 
         std::vector<std::unique_ptr<session>> m_Sessions;
 
