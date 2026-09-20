@@ -81,31 +81,48 @@ inline void DrawerComputeRect(const drawer& D, const ImGuiViewport& Vp,
     }
 }
 
+// Hit strip on the free edge (opposite the attached edge). Uses InvisibleButton
+// so drag works reliably; drawn separator so the edge is visible.
 inline void DrawerDepthGrip(drawer& D) noexcept
 {
     const bool bHorizontal = (D.m_Edge == drawer_edge::bottom || D.m_Edge == drawer_edge::top);
-    const ImVec2 GripSize = bHorizontal ? ImVec2(-1.0f, 8.0f) : ImVec2(8.0f, -1.0f);
+    const float Hit = 10.0f;
+    const ImVec2 GripSize = bHorizontal ? ImVec2(-1.0f, Hit) : ImVec2(Hit, -1.0f);
 
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_Separator));
-    if (ImGui::BeginChild("##DrawerDepthGrip", GripSize, false,
-                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoNav))
-    {
+    const ImVec2 Cursor = ImGui::GetCursorScreenPos();
+    ImGui::InvisibleButton("##DrawerDepthGrip", GripSize);
+    const bool bActive = ImGui::IsItemActive();
+    const bool bHovered = ImGui::IsItemHovered();
+    if (bHovered || bActive)
         ImGui::SetMouseCursor(bHorizontal ? ImGuiMouseCursor_ResizeNS : ImGuiMouseCursor_ResizeEW);
-        if (ImGui::IsWindowHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+
+    if (bActive)
+    {
+        const ImVec2 Delta = ImGui::GetIO().MouseDelta;
+        switch (D.m_Edge)
         {
-            const ImVec2 Delta = ImGui::GetIO().MouseDelta;
-            switch (D.m_Edge)
-            {
-            case drawer_edge::bottom: D.m_Depth -= Delta.y; break;
-            case drawer_edge::top:    D.m_Depth += Delta.y; break;
-            case drawer_edge::left:   D.m_Depth += Delta.x; break;
-            case drawer_edge::right:  D.m_Depth -= Delta.x; break;
-            }
-            D.m_Depth = (std::clamp)(D.m_Depth, 120.0f, 900.0f);
+        case drawer_edge::bottom: D.m_Depth -= Delta.y; break;
+        case drawer_edge::top:    D.m_Depth += Delta.y; break;
+        case drawer_edge::left:   D.m_Depth += Delta.x; break;
+        case drawer_edge::right:  D.m_Depth -= Delta.x; break;
         }
+        D.m_Depth = (std::clamp)(D.m_Depth, 120.0f, 900.0f);
     }
-    ImGui::EndChild();
-    ImGui::PopStyleColor();
+
+    // Visual line along the free edge.
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const ImVec2 Max = ImGui::GetItemRectMax();
+    const ImU32 Col = ImGui::GetColorU32(bHovered || bActive ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator);
+    if (bHorizontal)
+    {
+        const float Y = (D.m_Edge == drawer_edge::bottom) ? Cursor.y + Hit * 0.5f : Max.y - Hit * 0.5f;
+        dl->AddLine(ImVec2(Cursor.x, Y), ImVec2(Max.x, Y), Col, 2.0f);
+    }
+    else
+    {
+        const float X = (D.m_Edge == drawer_edge::left) ? Max.x - Hit * 0.5f : Cursor.x + Hit * 0.5f;
+        dl->AddLine(ImVec2(X, Cursor.y), ImVec2(X, Max.y), Col, 2.0f);
+    }
 }
 
 inline void DrawerRender(drawer& D, ImGuiViewport* pViewport) noexcept
