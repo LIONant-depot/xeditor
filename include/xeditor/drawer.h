@@ -159,6 +159,9 @@ inline void DrawerRender(drawer& D, ImGuiViewport* pViewport, T_RENDER_TAB&& Ren
     ImGui::SetNextWindowPos(Pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(Size, ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.98f);
+    // Match peer-editor dock tab strip (E29 TitleBg / TabDimmed), not Window (0x38).
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::GetStyleColorVec4(ImGuiCol_TitleBg));
+
 
     const ImGuiWindowFlags Flags =
         ImGuiWindowFlags_NoCollapse
@@ -218,6 +221,7 @@ inline void DrawerRender(drawer& D, ImGuiViewport* pViewport, T_RENDER_TAB&& Ren
         if (D.m_Edge == drawer_edge::top || D.m_Edge == drawer_edge::left)
             DrawerDepthGrip(D);
     }
+        ImGui::PopStyleColor(1);
     ImGui::End();
     ImGui::PopStyleVar(3);
 }
