@@ -7,6 +7,7 @@
 
 
 #include "session.h"
+#include "drawer.h"
 
 #include "registry.h"
 
@@ -20,6 +21,7 @@
 #include <string_view>
 
 #include <vector>
+#include <unordered_map>
 
 
 
@@ -101,6 +103,54 @@ namespace xeditor
 
         bool is_play_active() const noexcept { return m_pPlayOwner != nullptr; }
 
+        // --- Host Drawer (DESIGN 2.2 / 4.5): one logical drawer, per-OS-window manifestation ---
+        std::unordered_map<ImGuiID, drawer>          m_Drawers;
+        std::function<void(int, const char*)>        m_OnDrawerTab; // app fills tab bodies (SC, Assets, ...)
+        int                                          m_DrawerInputFrame = -1;
+
+        drawer& drawer_for(ImGuiID ViewportId) noexcept { return m_Drawers[ViewportId]; }
+
+        // Space toggles the *focused* OS window's manifestation. Call from any editor; once/frame.
+        void pump_drawer_input() noexcept
+        {
+            const int Frame = ImGui::GetFrameCount();
+            if (m_DrawerInputFrame == Frame) return;
+            m_DrawerInputFrame = Frame;
+            ImGuiViewport* vp = FocusedDrawerViewport();
+            if (vp == nullptr) return;
+            DrawerHandleToggle(drawer_for(vp->ID));
+        }
+
+        // Render drawer overlay into this OS window's viewport (no-op if closed / already drawn).
+        void render_drawer(ImGuiViewport* pViewport) noexcept
+        {
+            if (pViewport == nullptr) return;
+            drawer& D = drawer_for(pViewport->ID);
+            if (m_OnDrawerTab)
+                DrawerRender(D, pViewport, m_OnDrawerTab);
+            else
+                DrawerRender(D, pViewport);
+        }
+
+        // Open drawer on a viewport to a tab index (toolbar Assets, etc.).
+        void open_drawer_tab(ImGuiViewport* pViewport, int TabIndex) noexcept
+        {
+            if (pViewport == nullptr) return;
+            drawer& D = drawer_for(pViewport->ID);
+            D.m_bOpen = true;
+            D.m_ActiveTab = TabIndex;
+        }
+
+        // Call ONCE per frame from the app (not from each editor). Handles Space on the
+        // focused OS window and draws every open per-viewport manifestation. Editors stay
+        // drawer-agnostic — full_editor_shell / peer editors do not wire this themselves.
+        void draw_host_drawers() noexcept
+        {
+            pump_drawer_input();
+            ImGuiPlatformIO& PlatformIO = ImGui::GetPlatformIO();
+            for (ImGuiViewport* pVp : PlatformIO.Viewports)
+                render_drawer(pVp);
+        }
 
         std::vector<std::unique_ptr<session>> m_Sessions;
 

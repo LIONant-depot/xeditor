@@ -37,7 +37,20 @@ struct drawer
     float        m_Depth     = 280.0f;
     float        m_SideInset = 4.0f;
     int          m_ActiveTab = 0; // index into kDrawerTabs
+    int          m_LastRenderFrame = -1; // host: render at most once per viewport per frame
 };
+
+// Viewport that should receive Space toggle this frame (focused ImGui window's OS window).
+inline ImGuiViewport* FocusedDrawerViewport() noexcept
+{
+    ImGuiViewport* vp = ImGui::GetMainViewport();
+    if (ImGuiContext* ctx = ImGui::GetCurrentContext())
+    {
+        if (ctx->NavWindow && ctx->NavWindow->Viewport)
+            vp = ctx->NavWindow->Viewport;
+    }
+    return vp;
+}
 
 inline void DrawerHandleToggle(drawer& D) noexcept
 {
@@ -129,6 +142,9 @@ template<typename T_RENDER_TAB>
 inline void DrawerRender(drawer& D, ImGuiViewport* pViewport, T_RENDER_TAB&& RenderTab) noexcept
 {
     if (!D.m_bOpen || pViewport == nullptr) return;
+    const int Frame = ImGui::GetFrameCount();
+    if (D.m_LastRenderFrame == Frame) return;
+    D.m_LastRenderFrame = Frame;
 
     ImVec2 Pos, Size;
     DrawerComputeRect(D, *pViewport, Pos, Size);

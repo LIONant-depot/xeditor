@@ -2,7 +2,10 @@
 #define XEDITOR_FULL_EDITOR_SHELL_H
 #pragma once
 
-// Thin full-editor dock helpers. Callers still own Begin/MenuBar/title
+// Thin full-editor dock helpers.
+// Host Drawer (Space) is NOT per-editor: the app calls xeditor::host::draw_host_drawers()
+// once per frame. Peer editors (Level, Texture, ...) stay drawer-agnostic.
+// Callers still own Begin/MenuBar/title
 // (FormatEditorRootTabTitle + DrawEditorRootTabIcon live in Tools/Editor shims).
 // This keeps isolation + zero-padding conventions in one place for Level/Texture.
 
