@@ -444,11 +444,11 @@ Deliverable 2 (E29+Texture parity): Level/Texture on host, document vs workspace
 ## 14. Open points to resolve during implementation (not blockers for approving this design)
 
 1. Exact display-name rules for Level vs Texture (asset name vs file stem).
-2. **Resolved (2026-09-21):** Level is a peer editor; scenes lock independently via edit/view; Level session grain can remain one session per level asset.
+2. **Resolved (2026-09-21):** Level is a peer editor; write locks claim Level + **selected** scene(s) on first mutate (not every open scene); clean/save releases; Level session grain stays one session per level asset.
 3. Prefer **host-owned** open-instance / write-lock table (works for headless + multi-window).
 4. Shim strategy while headers move from `xGPU/source/Tools/Editor` to this repo.
 5. Drawer v1 overlay-only vs also shipping "Dock in Layout" in the first drawer milestone.
-6. Play conflict UX: fail loud (default) vs auto-stop previous Play.
+6. **Resolved (fail loud):** Play singleton opens a modal when another Level is already playing; auto-stop deferred.
 
 
 ---
@@ -473,6 +473,6 @@ Please confirm or amend:
 
 **Done (this journey):** Modern `xeditor` library spine; E29 Level + Texture as peer-shaped sessions on `host`; dual CLI planes; idle/Game.dll hooks; E29CLI thin shim; shutdown/UAF fixes; acceptance checklist for Deliverable 1-2.
 
-**Designed, not built:** Host Drawer (one logical drawer, per-OS-window manifestation), Level demoted from shell to peer editor UI, edit/view write locks (scenes + all resources), single Play. That is **Phase D** — open a new session when ready to implement.
+**Phase D (built 2026-09-21):** Host Drawer (Space, per-OS-window manifestation), Level as peer (dock diet), edit/view write locks (clean unlock / first-mutate claim / save release; scene grain = selection), Play singleton + fail-loud modal. Remaining polish: multi-Level stress in the wild, Texture write-lock wiring. Was **Phase D** — open a new session when ready to implement.
 
 **Tips to reopen Phase D:** `xeditor` DESIGN sections 2.2 / 4.5-4.7 / Phase D; xGPU proving port around `088282d`; Texture plugin descriptor + borrowed sessions.
