@@ -1,9 +1,9 @@
 # xeditor - Design (modern editor framework)
 
-**Status:** design for review - no implementation commitment until approved
+**Status:** living design - Deliverable 1-2 proving port shipped; Host Drawer / Level-as-peer (2.2, 4.5-4.7, Phase D) awaiting implementation
 **Repo / work tree:** `xGPU/dependencies/xeditor` -> [LIONant-depot/xeditor](https://github.com/LIONant-depot/xeditor) (this is the dependency E29 links; replaces the legacy `Src/` tree when the new library ships)
 **Related:** `xGPU/Build/EDITOR_VIEWER_FRAMEWORK_PROBLEM_STATEMENT.md` (requirements spine; this doc is the concrete API + migration plan)  
-**Date:** 2026-09-20  
+**Date:** 2026-09-20; addendum 2026-09-21  
 
 ---
 
@@ -38,6 +38,21 @@ Future editors should be obviously easier because constraints and extension poin
 Keep: Session owns undo; Document does not. Embedded viewers must not call dock isolation. One writable session per identity (second open focuses). Phase A -> Texture -> E29.
 
 Added: host/workspace CLI plane for non-resource commands (6.2-6.3) and Phase C sub-plan 10.C.1 (Game.dll / SC / compile / browser / idle).
+
+### 2.2 Host Drawer + peer editors (locked 2026-09-21)
+
+| Topic | Decision |
+|---|---|
+| Level is not the core | **Level is a peer editor** like Texture. It must not own the process shell. |
+| Real core (host services) | Resources, Assets, Source Control, Idle Work, Log, Commands, Compilation, Project Settings - plus the process CLI/workspace undo plane. |
+| Drawer | Unreal Content Drawer-like **edge overlay** toggled with **Space** (focus-gated: not while typing in text fields). Children dock **only inside** the drawer. |
+| Per window | Drawer opens in the **focused OS/ImGui root window only**, not every window. A floated Texture window has its own drawer instance. |
+| Edge + size | User-chosen edge (default bottom). "Resize" = distance from that edge; the other axis stays near max. Remember size/edge per window. |
+| Local clones | Any editor may open a *local* Resources (etc.) panel docked only in **that editor's** dockspace. Same UI type; different ownership; no cross-dock into drawer or other editors. |
+| Play | **Belongs to the Level editor** UI. Process-wide: **at most one Play** even if many Level editors are open. |
+| Edit vs View | **Every resource** (including scenes) has edit/view. At most one **writer** per identity. First editor that **starts modifying** takes the write lock; others are **read-only**. Level edits both **levels** and **scenes** - scene locks matter when the same scene appears in multiple levels. |
+| Modern | Prefer this host/drawer/peer model over growing E29-as-shell further. |
+
 
 
 ---
@@ -84,10 +99,14 @@ Session                            Document + xundo::system + command registrati
 
 ### 4.2 Session
 
-- One open editing context for one resource identity.  
-- Owns `xundo::system` and registers that document’s commands.  
-- Identity for addressing: prefer **stable resource path / display name + disambiguator**, not a separate opaque session UUID as the primary human surface (see §6). Internally may still key by `xresource::full_guid`.  
-- Policy (default): **at most one writable session per resource identity per process**; a second open focuses the existing session. (Revisit only if E29 port hits a hard conflict.)
+- One open context for one resource identity (level, texture, **scene**, ...).
+- Owns `xundo::system` and registers that document's commands.
+- Identity for addressing: prefer **stable resource path / display name + disambiguator**, not a separate opaque session UUID as the primary human surface (see section 6). Internally may still key by `xresource::full_guid`.
+- **Edit vs View (all resources):** a session is either **writable** or **read-only view**.
+  - Process-wide: **at most one writable session per resource identity**.
+  - Opening additional views of the same identity is allowed as **read-only**.
+  - **Write lock:** the first session that **begins a mutating command** on that identity becomes the writer; others stay/become read-only and show a clear "edited elsewhere" state. Releasing the writer does not silently promote another view - explicit user action required.
+- **Level's double duty:** a Level editor may reference multiple **scenes**. Each scene is its own identity for edit/view locks. Mutating entities takes that **scene's** write lock. Two Level editors showing scene S: only one may mutate S.
 
 ### 4.3 View (`IUI`)
 
@@ -105,6 +124,61 @@ Session                            Document + xundo::system + command registrati
 | **Thumbnail job** | None | No | No | Deferred; snapshot/saved revision only |
 
 Graphical bootstrap must be **optional**: logic-headless must not create a window or ImGui context.
+
+### 4.5 Host window vs peer editors vs Drawer
+
+Clarify the three layers that E29 currently conflates:
+
+| Layer | What it is | Examples |
+|---|---|---|
+| **Host process** | One process, one CLI pipe, workspace undo, shared services | `xeditorcli`, scheduler, lib mgr |
+| **Host window** | One OS / ImGui root viewport (main app or a floated editor window) | Main frame; undocked Texture window |
+| **Peer editor** | Full-editor shell for **one** resource session | Level, Texture, future types |
+| **Drawer** | Per-host-window edge overlay for **process services** UI | Resources, SC, Idle, Log, Commands, ... |
+
+**Level is not the core editor.** It is a peer full-editor like Texture. The "Parent Editor" dock that today owns Resources / SC / Log / Commands / Idle while also hosting Level must be split:
+
+1. **Peer editor root** - Level (or Texture) only: viewport, hierarchy, inspectors, Level Play/Stop, .... Isolated dock ClassId keyed by that editor's resource identity (as today).
+2. **Drawer** - host services listed below. Isolated dock ClassId **distinct** from every peer editor so panels cannot cross-dock either way.
+
+#### Drawer behavior (Unreal Content Drawer-like, modernized)
+
+- **Toggle:** Space opens/closes the drawer in the **focused host window only**. Other windows unchanged.
+- **Focus gate:** Space ignored while a text field / console input / modal wants keys.
+- **Stacking:** Drawer draws **above** peer editors in that window (overlay). v1 = overlay only; optional later "Dock in layout" (Unreal).
+- **Edge:** User preference per window - bottom (default), top, left, or right.
+- **Size:** Primary dimension = distance from the chosen edge; orthogonal axis stays near maximized. Persist edge + depth (+ optional last tab) per window.
+- **Isolation:** Nested `DockSpace` + WindowClass so **only drawer children** dock inside.
+- **Starting tabs (v1):** Resources · Assets · Source Control · Idle Work · Log · Commands · Compilation · Project Settings.
+- **Not in the drawer:** Play/Stop (Level), per-asset Texture Save/Compile toolbar, domain inspectors for the open resource.
+
+#### Local service panels inside a peer editor
+
+Any peer editor may spawn a **local** Resources / Log / ... panel docked only in **that** editor's dockspace (same widget type, editor-owned instance):
+
+- Local panel ClassId = that editor's isolation class - **not** the drawer class.
+- Cannot drag into the drawer or into another editor.
+- Closing the editor destroys its local panels; the window's drawer remains.
+
+#### Multi-window
+
+If Texture is floated to its own OS window, that window has its **own drawer** (own edge/size memory). Opening the drawer there does not open it on the main window. Process services behind the UI stay shared (one SC system, one compile queue); each drawer is a **view** onto them.
+
+### 4.6 Play policy (Level)
+
+- Play controls live on the **Level editor** chrome (toolbar), never in the drawer.
+- **Process-wide singleton:** at most one Play/PIE-style run at a time, even with many Level editors open. Starting Play while another Level is playing **fails loud** (default); auto-stop is a product option later.
+- Headless/AI: `Play` / `Stop` still honor the singleton.
+
+### 4.7 Mapping to CLI planes
+
+| Surface | Plane |
+|---|---|
+| Drawer services (SC, compile, open asset, idle, ...) | Workspace / Host |
+| Level entity/scene/prefab edits | LevelName + scene write lock |
+| Texture domain edits | TextureName |
+| Play/Stop | Level UI + commands; singleton enforced in host |
+
 
 ---
 
@@ -240,11 +314,16 @@ Further globals are discovered while porting E29 - document them in this file as
 
 ## 8. Dock isolation and chrome
 
-- Generalize E29’s nested dockspace + `WindowClass` (already sketched in `xeditor_dock_isolation.h`) keyed by **open resource `full_guid`**.  
-- Full editor: Texture pattern - menu bar on the root, children dock only inside that root.  
-- Embedded viewer (later): **must not** call isolation; it is a child rect of someone else’s session.
+Three isolation domains (never share ClassId across domains):
 
-Root tabs: keep `xeditor_resource_tab.h` policy - icon + `Name###stableId`; do **not** fight ImGui with tall `FramePadding` for root tabs.
+1. **Peer editor** - keyed by open resource `full_guid` (`DockClassForResource` / `FinishFullEditorDockspace`).
+2. **Drawer** - keyed by host-window id + a stable drawer namespace (not a resource guid).
+3. **Embedded viewer** (later) - **must not** call isolation; child rect of someone else's session.
+
+Full editor: Texture pattern - menu bar on the root, children only dock inside that root.
+Drawer: edge overlay; children only dock inside the drawer dockspace.
+Root tabs: `xeditor_resource_tab.h` - icon + `Name###stableId`; do **not** fight ImGui with tall `FramePadding` for root tabs.
+
 
 ---
 
@@ -300,7 +379,7 @@ The API must not paint us into a corner that blocks these.
 
 #### 10.C.1 E29 global / shell subsystems
 
-Non-document commands (Workspace, Source Control, Compilation, Asset Browser, Play, Chat, Game.dll/idle hooks, open-Texture) land on the **workspace** plane when E29CLI retires. Phase C order: (1) library supports both planes (2) lift E29 commands onto workspace with same names (3) add Level session; move only obvious document commands (4) host hooks for Game.dll/idle (5) delete E29CLI. Risk: bare `Undo` stays workspace (= today's E29Undo); Level undo is `LevelName\Undo`.
+Non-document **service** commands (Workspace, Source Control, Compilation, Asset Browser, Chat, Game.dll/idle hooks, open-Texture) land on the **workspace** plane and are surfaced in the **Drawer** UI. **Play stays on the Level editor** (process-wide singleton). AI uses workspace/Host for services and LevelName for document cmds. Phase C order: (1) library supports both planes (2) lift E29 commands onto workspace with same names (3) add Level session; move only obvious document commands (4) host hooks for Game.dll/idle (5) delete E29CLI. Risk: bare `Undo` stays workspace (= today's E29Undo); Level undo is `LevelName\Undo`.
 
 **Exit (success criteria):**
 
@@ -309,9 +388,18 @@ Non-document commands (Workspace, Source Control, Compilation, Asset Browser, Pl
 - Code volume for “editor plumbing” in E29 drops; new editor checklist (§5) is obviously shorter than today’s E29 bootstrap.  
 - E30: Texture open/edit/save via CLI with no window; plus one workspace command and one `LevelName\...` once Phase C routing exists.
 
-### Phase D - Later
+### Phase D - Host Drawer + demote Level to peer (next major)
 
-Embedded viewers, thumbnails, asset-browser open, more resource types (E19/E20/…).
+1. Introduce `xeditor` **Drawer** API: per host-window overlay, edge + depth persistence, Space toggle, isolated dockspace.
+2. Move Resources / Assets / SC / Idle / Log / Commands / Compilation / Project Settings out of the Level "Parent Editor" into the drawer.
+3. Level becomes a peer full-editor tab/window like Texture (own root dock only).
+4. Enforce **edit/view** write locks for scenes (and all resources); multi-Level open safe.
+5. Enforce **single Play** in the host.
+6. Optional: "Dock drawer in layout" after overlay v1.
+
+### Phase E - Later
+
+Embedded viewers, thumbnails, asset-browser open polish, more resource types (E19/E20/...).
 
 ---
 
@@ -351,10 +439,13 @@ Deliverable 2 (E29+Texture parity): Level/Texture on host, document vs workspace
 
 ## 14. Open points to resolve during implementation (not blockers for approving this design)
 
-1. Exact display-name rules for Level vs Texture (asset name vs file stem).  
-2. Whether Level is one document for the whole editor workspace or one per open scene resource.  
-3. Where process-wide open-instance table lives (host vs asset mgr) - seed comments said asset mgr; host-owned table may be simpler for headless.  
-4. Shim strategy while headers move from `xGPU/source/Tools/Editor` → this repo (avoid breaking Texture mid-move).
+1. Exact display-name rules for Level vs Texture (asset name vs file stem).
+2. **Resolved (2026-09-21):** Level is a peer editor; scenes lock independently via edit/view; Level session grain can remain one session per level asset.
+3. Prefer **host-owned** open-instance / write-lock table (works for headless + multi-window).
+4. Shim strategy while headers move from `xGPU/source/Tools/Editor` to this repo.
+5. Drawer v1 overlay-only vs also shipping "Dock in Layout" in the first drawer milestone.
+6. Play conflict UX: fail loud (default) vs auto-stop previous Play.
+
 
 ---
 
@@ -362,7 +453,12 @@ Deliverable 2 (E29+Texture parity): Level/Texture on host, document vs workspace
 
 Please confirm or amend:
 
-1. This API split (Document vs Session vs Host vs IUI) is acceptable.  
-2. `ResourceName\Command` as the primary CLI surface is correct.  
-3. Phase order A → B (Texture) → C (E29) → E30 alongside A/B is OK (or prefer E30 earlier).  
-4. Anything in §9 that must move **into** deliverable 1-2 after all.
+1. This API split (Document vs Session vs Host vs IUI) is acceptable.
+2. ResourceName\Command as the primary CLI surface is correct.
+3. Phase order A -> B (Texture) -> C (E29) -> **D (Drawer + Level-as-peer)** -> E30/E is OK.
+4. Sections 2.2 / 4.5-4.7 (Drawer per window, Level peer, edit/view locks, single Play) match intent.
+5. Anything in section 9 that must move **into** the Drawer milestone.
+
+---
+
+*Last design addendum: Host Drawer + peer editors + edit/view + Play - 2026-09-21.*
