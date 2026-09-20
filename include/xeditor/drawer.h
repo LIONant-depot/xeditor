@@ -125,7 +125,8 @@ inline void DrawerDepthGrip(drawer& D) noexcept
     }
 }
 
-inline void DrawerRender(drawer& D, ImGuiViewport* pViewport) noexcept
+template<typename T_RENDER_TAB>
+inline void DrawerRender(drawer& D, ImGuiViewport* pViewport, T_RENDER_TAB&& RenderTab) noexcept
 {
     if (!D.m_bOpen || pViewport == nullptr) return;
 
@@ -155,7 +156,6 @@ inline void DrawerRender(drawer& D, ImGuiViewport* pViewport) noexcept
     std::snprintf(RootName, sizeof(RootName), "xeditor.Drawer###Drawer.%08X",
                   static_cast<unsigned>(pViewport->ID));
 
-    // Always force geometry after Begin too (defeats any leftover drag).
     if (ImGui::Begin(RootName, &D.m_bOpen, Flags))
     {
         ImGui::SetWindowPos(Pos, ImGuiCond_Always);
@@ -185,8 +185,7 @@ inline void DrawerRender(drawer& D, ImGuiViewport* pViewport) noexcept
                 {
                     D.m_ActiveTab = i;
                     ImGui::BeginChild("##DrawerTabBody", ImVec2(0, 0), false);
-                    ImGui::TextUnformatted(kTabs[i]);
-                    ImGui::TextDisabled("Host Drawer stub - service UI moves here next.");
+                    RenderTab(i, kTabs[i]);
                     ImGui::EndChild();
                     ImGui::EndTabItem();
                 }
@@ -199,6 +198,16 @@ inline void DrawerRender(drawer& D, ImGuiViewport* pViewport) noexcept
     }
     ImGui::End();
     ImGui::PopStyleVar(3);
+}
+
+// Overload: stub bodies when no callback supplied.
+inline void DrawerRender(drawer& D, ImGuiViewport* pViewport) noexcept
+{
+    DrawerRender(D, pViewport, [](int, const char* Name)
+    {
+        ImGui::TextUnformatted(Name);
+        ImGui::TextDisabled("Host Drawer stub - service UI moves here next.");
+    });
 }
 
 } // namespace xeditor
