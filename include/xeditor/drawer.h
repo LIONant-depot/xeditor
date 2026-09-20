@@ -3,11 +3,16 @@
 #pragma once
 
 // Host Drawer (DESIGN 2.2 / 4.5): one logical process-services overlay.
-// Manifested per OS window (ImGui viewport). Space toggles the focused
-// viewport's open state. Children dock only inside the drawer ClassId.
-// v1: overlay + empty stub tabs. Moving real SC/Log/Resources panels is Phase D later.
+// Manifested per OS window (ImGui viewport). Space toggles open state.
+//
+// Edge attach (hard rules):
+// - Flush to the chosen OS-window edge (full viewport Pos/Size).
+// - Only depth scales (farther/closer). Free axis spans the window
+//   with a tiny inset. NoMove / NoResize on the host window.
+// - Service UI is an *internal* TabBar (not dockable child windows),
+//   so tabs cannot float out into the Level dock or free-drag.
+// v1: stub tab bodies. Real SC/Log/Resources panels plug in later.
 
-#include "dock_isolation.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 
@@ -27,20 +32,12 @@ enum class drawer_edge : std::uint8_t
 
 struct drawer
 {
-    bool         m_bOpen  = false;
-    drawer_edge  m_Edge   = drawer_edge::bottom;
-    float        m_Depth  = 280.0f;
-    ImGuiID      m_ClassId = 0xD4A00001u;
+    bool         m_bOpen     = false;
+    drawer_edge  m_Edge      = drawer_edge::bottom;
+    float        m_Depth     = 280.0f;
+    float        m_SideInset = 4.0f;
+    int          m_ActiveTab = 0; // index into kDrawerTabs
 };
-
-inline ImGuiWindowClass DrawerWindowClass(const drawer& D) noexcept
-{
-    ImGuiWindowClass Wc;
-    Wc.ClassId               = D.m_ClassId ? D.m_ClassId : 0xD4A00001u;
-    Wc.DockingAllowUnclassed = false;
-    Wc.DockingAlwaysTabBar   = true;
-    return Wc;
-}
 
 inline void DrawerHandleToggle(drawer& D) noexcept
 {
@@ -54,29 +51,61 @@ inline void DrawerHandleToggle(drawer& D) noexcept
 inline void DrawerComputeRect(const drawer& D, const ImGuiViewport& Vp,
                               ImVec2& OutPos, ImVec2& OutSize) noexcept
 {
-    const ImVec2 Wp = Vp.WorkPos;
-    const ImVec2 Ws = Vp.WorkSize;
-    const float  Depth = (std::max)(80.0f, D.m_Depth);
+    const ImVec2 VpPos  = Vp.Pos;
+    const ImVec2 VpSize = Vp.Size;
+    const float  Inset  = (std::max)(0.0f, D.m_SideInset);
+    const float  MaxY   = (std::max)(120.0f, VpSize.y * 0.85f);
+    const float  MaxX   = (std::max)(120.0f, VpSize.x * 0.85f);
+    const float  DepthY = (std::clamp)(D.m_Depth, 120.0f, MaxY);
+    const float  DepthX = (std::clamp)(D.m_Depth, 120.0f, MaxX);
+
     switch (D.m_Edge)
     {
     case drawer_edge::top:
-        OutPos  = Wp;
-        OutSize = ImVec2(Ws.x, (std::min)(Depth, Ws.y * 0.9f));
+        OutPos  = ImVec2(VpPos.x + Inset, VpPos.y);
+        OutSize = ImVec2(VpSize.x - Inset * 2.0f, DepthY);
         break;
     case drawer_edge::left:
-        OutPos  = Wp;
-        OutSize = ImVec2((std::min)(Depth, Ws.x * 0.9f), Ws.y);
+        OutPos  = ImVec2(VpPos.x, VpPos.y + Inset);
+        OutSize = ImVec2(DepthX, VpSize.y - Inset * 2.0f);
         break;
     case drawer_edge::right:
-        OutSize = ImVec2((std::min)(Depth, Ws.x * 0.9f), Ws.y);
-        OutPos  = ImVec2(Wp.x + Ws.x - OutSize.x, Wp.y);
+        OutSize = ImVec2(DepthX, VpSize.y - Inset * 2.0f);
+        OutPos  = ImVec2(VpPos.x + VpSize.x - OutSize.x, VpPos.y + Inset);
         break;
     case drawer_edge::bottom:
     default:
-        OutSize = ImVec2(Ws.x, (std::min)(Depth, Ws.y * 0.9f));
-        OutPos  = ImVec2(Wp.x, Wp.y + Ws.y - OutSize.y);
+        OutSize = ImVec2(VpSize.x - Inset * 2.0f, DepthY);
+        OutPos  = ImVec2(VpPos.x + Inset, VpPos.y + VpSize.y - OutSize.y);
         break;
     }
+}
+
+inline void DrawerDepthGrip(drawer& D) noexcept
+{
+    const bool bHorizontal = (D.m_Edge == drawer_edge::bottom || D.m_Edge == drawer_edge::top);
+    const ImVec2 GripSize = bHorizontal ? ImVec2(-1.0f, 8.0f) : ImVec2(8.0f, -1.0f);
+
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_Separator));
+    if (ImGui::BeginChild("##DrawerDepthGrip", GripSize, false,
+                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoNav))
+    {
+        ImGui::SetMouseCursor(bHorizontal ? ImGuiMouseCursor_ResizeNS : ImGuiMouseCursor_ResizeEW);
+        if (ImGui::IsWindowHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+        {
+            const ImVec2 Delta = ImGui::GetIO().MouseDelta;
+            switch (D.m_Edge)
+            {
+            case drawer_edge::bottom: D.m_Depth -= Delta.y; break;
+            case drawer_edge::top:    D.m_Depth += Delta.y; break;
+            case drawer_edge::left:   D.m_Depth += Delta.x; break;
+            case drawer_edge::right:  D.m_Depth -= Delta.x; break;
+            }
+            D.m_Depth = (std::clamp)(D.m_Depth, 120.0f, 900.0f);
+        }
+    }
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
 }
 
 inline void DrawerRender(drawer& D, ImGuiViewport* pViewport) noexcept
@@ -89,71 +118,70 @@ inline void DrawerRender(drawer& D, ImGuiViewport* pViewport) noexcept
     ImGui::SetNextWindowViewport(pViewport->ID);
     ImGui::SetNextWindowPos(Pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(Size, ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.96f);
+    ImGui::SetNextWindowBgAlpha(0.98f);
 
     const ImGuiWindowFlags Flags =
         ImGuiWindowFlags_NoCollapse
       | ImGuiWindowFlags_NoDocking
       | ImGuiWindowFlags_NoTitleBar
       | ImGuiWindowFlags_NoMove
-      | ImGuiWindowFlags_NoBringToFrontOnFocus;
+      | ImGuiWindowFlags_NoResize
+      | ImGuiWindowFlags_NoSavedSettings
+      | ImGuiWindowFlags_NoNavFocus
+      | ImGuiWindowFlags_NoFocusOnAppearing;
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 4.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
     char RootName[64];
     std::snprintf(RootName, sizeof(RootName), "xeditor.Drawer###Drawer.%08X",
                   static_cast<unsigned>(pViewport->ID));
 
+    // Always force geometry after Begin too (defeats any leftover drag).
     if (ImGui::Begin(RootName, &D.m_bOpen, Flags))
     {
-        const ImGuiID DockId = ImGui::GetID("xeditor.Drawer.Dockspace");
-        const ImGuiWindowClass Wc = DrawerWindowClass(D);
+        ImGui::SetWindowPos(Pos, ImGuiCond_Always);
+        ImGui::SetWindowSize(Size, ImGuiCond_Always);
 
-        if (ImGui::BeginChild("##DrawerDepthGrip", ImVec2(0, 6), false,
-                              ImGuiWindowFlags_NoScrollbar))
-        {
-            if (ImGui::IsWindowHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
-            {
-                const ImVec2 Delta = ImGui::GetIO().MouseDelta;
-                switch (D.m_Edge)
-                {
-                case drawer_edge::bottom: D.m_Depth -= Delta.y; break;
-                case drawer_edge::top:    D.m_Depth += Delta.y; break;
-                case drawer_edge::left:   D.m_Depth += Delta.x; break;
-                case drawer_edge::right:  D.m_Depth -= Delta.x; break;
-                }
-                D.m_Depth = (std::clamp)(D.m_Depth, 120.0f, 900.0f);
-            }
-        }
-        ImGui::EndChild();
-
-        ImGui::DockSpace(DockId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None, &Wc);
-        ApplyDockClassToTree(ImGui::DockBuilderGetNode(DockId), Wc);
+        if (D.m_Edge == drawer_edge::bottom || D.m_Edge == drawer_edge::right)
+            DrawerDepthGrip(D);
 
         static const char* kTabs[] = {
-            "Resources###xeditor.Drawer.Resources",
-            "Assets###xeditor.Drawer.Assets",
-            "Source Control###xeditor.Drawer.SC",
-            "Idle Work###xeditor.Drawer.Idle",
-            "Log###xeditor.Drawer.Log",
-            "Commands###xeditor.Drawer.Commands",
-            "Compilation###xeditor.Drawer.Compile",
-            "Project Settings###xeditor.Drawer.Project",
+            "Resources",
+            "Assets",
+            "Source Control",
+            "Idle Work",
+            "Log",
+            "Commands",
+            "Compilation",
+            "Project Settings",
         };
-        for (const char* Title : kTabs)
+        constexpr int kTabCount = (int)(sizeof(kTabs) / sizeof(kTabs[0]));
+        if (D.m_ActiveTab < 0 || D.m_ActiveTab >= kTabCount) D.m_ActiveTab = 0;
+
+        if (ImGui::BeginTabBar("##DrawerTabs", ImGuiTabBarFlags_FittingPolicyScroll))
         {
-            ImGui::SetNextWindowClass(&Wc);
-            if (ImGui::Begin(Title))
+            for (int i = 0; i < kTabCount; ++i)
             {
-                ImGui::TextUnformatted(Title);
-                ImGui::TextDisabled("Host Drawer stub - service UI moves here next.");
+                if (ImGui::BeginTabItem(kTabs[i]))
+                {
+                    D.m_ActiveTab = i;
+                    ImGui::BeginChild("##DrawerTabBody", ImVec2(0, 0), false);
+                    ImGui::TextUnformatted(kTabs[i]);
+                    ImGui::TextDisabled("Host Drawer stub - service UI moves here next.");
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
             }
-            ImGui::End();
+            ImGui::EndTabBar();
         }
+
+        if (D.m_Edge == drawer_edge::top || D.m_Edge == drawer_edge::left)
+            DrawerDepthGrip(D);
     }
     ImGui::End();
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(3);
 }
 
 } // namespace xeditor
