@@ -105,7 +105,7 @@ Session                            Document + xundo::system + command registrati
 - **Edit vs View (all resources):** a session is either **writable** or **read-only view**.
   - Process-wide: **at most one writable session per resource identity**.
   - Opening additional views of the same identity is allowed as **read-only**.
-  - **Write lock:** the first session that **begins a mutating command** on that identity becomes the writer; others stay/become read-only and show a clear "edited elsewhere" state. Releasing the writer does not silently promote another view - explicit user action required.
+  - **Write lock (Level/scenes):** just-loaded / clean = **unlocked** (all peers editable). The first session that **begins a mutating command** claims the lock (no permission dialog); others become read-only for that identity and show "edited elsewhere". **Save** (document clean) **releases** the lock - same as just-loaded - so any peer may start editing next. Host Sync re-checks every frame (release when clean; acquire only on mutate).
 - **Level's double duty:** a Level editor may reference multiple **scenes**. Each scene is its own identity for edit/view locks. Mutating entities takes that **scene's** write lock. Two Level editors showing scene S: only one may mutate S.
 
 ### 4.3 View (`IUI`)
