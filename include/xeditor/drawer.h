@@ -57,7 +57,13 @@ inline void DrawerHandleToggle(drawer& D) noexcept
     const ImGuiIO& io = ImGui::GetIO();
     if (io.WantTextInput) return;
     if (io.KeyCtrl || io.KeyAlt || io.KeySuper) return;
-    if (ImGui::IsKeyPressed(ImGuiKey_Space, false))
+    // Route over focused/active items so Space still opens the drawer when a
+    // peer editor (e.g. Texture preview InvisibleButton) has focus.
+    const ImGuiInputFlags Flags =
+        ImGuiInputFlags_RouteGlobal
+      | ImGuiInputFlags_RouteOverFocused
+      | ImGuiInputFlags_RouteOverActive;
+    if (ImGui::Shortcut(ImGuiKey_Space, Flags))
         D.m_bOpen = !D.m_bOpen;
 }
 
