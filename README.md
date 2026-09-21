@@ -28,7 +28,7 @@ With `xGPU_unit_test` running E29:
 xeditorcli "list"
 xeditorcli "help"
 xeditorcli "LevelName\AddComponent -Scene ... -Id ..."
-xeditorcli "OpenTextureEditor -Library ... -Asset ..."
+xeditorcli "OpenResourceEditor -Asset ..."
 E29CLI "list"                          # same pipe; thin alias
 E29CLI "E29/Edit/Select -Scene ... -Id ..."   # legacy History path still works
 ```
