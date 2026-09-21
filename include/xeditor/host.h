@@ -67,6 +67,7 @@ namespace xeditor
         // Domain host services (E29 wires its per-frame pumps and the Game.dll focus-reload).
         std::function<void()> m_OnPumpServices;
         std::function<void()> m_OnFocusRegain;
+        std::function<void()> m_OnSourceChanged;   // files changed behind the editor's back (a source control pull)
 
         void pump_services() noexcept { m_IdleWork.Pump(); if (m_OnPumpServices) m_OnPumpServices(); }
         void on_focus_regain() noexcept { if (m_OnFocusRegain) m_OnFocusRegain(); }
