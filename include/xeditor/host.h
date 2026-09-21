@@ -12,6 +12,7 @@
 #include "registry.h"
 #include "log.h"
 #include "notify.h"
+#include "idle_work.h"
 
 #include <algorithm>
 #include <cassert>
@@ -60,13 +61,14 @@ namespace xeditor
 
         notifier                              m_Notifier;      // the last user-visible error, shown as a modal
         console_log                           m_ConsoleLog;    // every command run through the host
+        idle_work                             m_IdleWork;      // background maintenance that runs once the editor has been quiet for a while
         std::function<bool(xundo::system&)>   m_OnBeforeEdit;  // write-lock gate: return false to refuse an edit
 
-        // Domain host services (E29 wires Idle Work / SC idle / Game.dll focus-reload).
+        // Domain host services (E29 wires its per-frame pumps and the Game.dll focus-reload).
         std::function<void()> m_OnPumpServices;
         std::function<void()> m_OnFocusRegain;
 
-        void pump_services() noexcept { if (m_OnPumpServices) m_OnPumpServices(); }
+        void pump_services() noexcept { m_IdleWork.Pump(); if (m_OnPumpServices) m_OnPumpServices(); }
         void on_focus_regain() noexcept { if (m_OnFocusRegain) m_OnFocusRegain(); }
 
         // --- Edit vs view write locks (DESIGN 4.2) ---
