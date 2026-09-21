@@ -10,6 +10,8 @@
 #include "drawer.h"
 
 #include "registry.h"
+#include "log.h"
+#include "notify.h"
 
 #include <algorithm>
 #include <cassert>
@@ -55,6 +57,10 @@ namespace xeditor
         xundo::system                         m_Workspace;
 
         xundo::system*                        m_pExternalWorkspace = nullptr;
+
+        notifier                              m_Notifier;      // the last user-visible error, shown as a modal
+        console_log                           m_ConsoleLog;    // every command run through the host
+        std::function<bool(xundo::system&)>   m_OnBeforeEdit;  // write-lock gate: return false to refuse an edit
 
         // Domain host services (E29 wires Idle Work / SC idle / Game.dll focus-reload).
         std::function<void()> m_OnPumpServices;
@@ -466,6 +472,14 @@ namespace xeditor
 
     };
 
+
+    // Tells the person something went wrong: always in the process log, and as a modal when the host has a UI.
+    inline void NotifyError(std::string_view Message) noexcept
+    {
+        std::printf("%.*s\n", static_cast<int>(Message.size()), Message.data());
+        std::fflush(stdout);                                  // flushed so a crash cannot swallow the line that explains it
+        if (auto* pHost = host::current()) pHost->m_Notifier.raise(Message);
+    }
 }
 
 
