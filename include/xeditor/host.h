@@ -12,6 +12,7 @@
 #include "registry.h"
 
 #include <algorithm>
+#include <cassert>
 
 #include <cstdio>
 
@@ -35,6 +36,22 @@ namespace xeditor
 
     public:
 
+        // The one process-wide root: editors, plugins and extensions reach shared state through it.
+        // Constructing a host makes it current; destroying it clears that.
+        static inline host* s_pCurrent = nullptr;
+        static host* current() noexcept { return s_pCurrent; }
+        host() noexcept { s_pCurrent = this; }
+        ~host() noexcept { release_current(); }
+        void release_current() noexcept { if (s_pCurrent == this) s_pCurrent = nullptr; }
+
+        // Non-owning services (game world, asset manager, source control, ...). Keyed by a compile-time hash of
+        // the type, so the key is identical in every binary. The owner provides the object and withdraws it
+        // before destroying it; consumers call find/get each time and never cache the pointer.
+        template<class T> void provide(T& Service) noexcept { m_Services[key<T>()] = &Service; }
+        template<class T> void withdraw() noexcept          { m_Services.erase(key<T>()); }
+        template<class T> T*   find() const noexcept        { auto It = m_Services.find(key<T>()); return It == m_Services.end() ? nullptr : static_cast<T*>(It->second); }
+        template<class T> T&   get() const noexcept         { auto* p = find<T>(); assert(p && "service not provided"); return *p; }
+
         xundo::system                         m_Workspace;
 
         xundo::system*                        m_pExternalWorkspace = nullptr;
@@ -52,6 +69,9 @@ namespace xeditor
             xresource::full_guid guid{};
             session*             pWriter = nullptr;
         };
+        template<class T> static consteval xresource::type_guid key() noexcept { return xresource::type_guid{ __FUNCSIG__ }; }
+        std::unordered_map<xresource::type_guid, void*> m_Services;
+
         std::vector<write_lock> m_WriteLocks;
 
         session* writer_for(xresource::full_guid Guid) const noexcept
