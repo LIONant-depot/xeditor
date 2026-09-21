@@ -1,6 +1,6 @@
 # xeditor - global services and shared UI (proposal)
 
-Status: **proposal, 2026-09-21** - for owner review before any code moves. Extends `DESIGN.md`
+Status: **proposal, 2026-09-21; the non-UI half is implemented** (see "Implemented" at the end). Extends `DESIGN.md`
 (section 2.2 "Globals: xscheduler shared; other shared services emerge during the port").
 
 ## 1. Problem
@@ -103,3 +103,20 @@ A headless host (E30) links `host_core.h` only.
 5. Split `host.h` into core + UI.
 6. Move the domain services out to their depots (asset manager, source control) and the editor code
    to xscene.plugin / xlevel.plugin.
+
+## Implemented
+
+In `include/xeditor/`:
+
+| Header | What it gives an editor |
+|---|---|
+| `host.h` | the root: `current()`, the service registry (`provide` / `find` / `get` / `withdraw`), the workspace undo, write locks, the Play singleton, `m_OnBeforeEdit` (the edit gate), `m_OnPumpServices`, `m_OnFocusRegain`, `m_OnSourceChanged`, `NotifyError` |
+| `notify.h`, `log.h` | the last user-visible error (a modal when there is a UI) and the console log every command is written to |
+| `commands.h` | `Run`, `RunQuery`, `RunGroup`: run commands from UI code the way a typed one runs (gate, log, execute, report) |
+| `serialize.h` | `Base64Encode/Decode`, `WriteString/ReadString`: how free text travels on a command line |
+| `idle_work.h` | maintenance that runs once the editor has been quiet (`m_OnRun`), its task registry and panel; the host owns one (`m_IdleWork`) |
+| `diagnostics.h` | the trace log, the CRT assertion hook and the terminate handler |
+| `widgets.h` | the case-insensitive search and the search box the tree panels share |
+
+Still to do from this proposal: `confirm` / modal queue, tooltips and theme, and splitting `host.h` into a UI-free core and
+its ImGui half.
