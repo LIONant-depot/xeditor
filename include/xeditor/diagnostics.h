@@ -211,6 +211,87 @@ namespace xeditor::diagnostics
         g_PreviousTerminateHandler = nullptr;
     }
 
+#if defined(_MSC_VER) && defined(_DEBUG)
+    // Raw SEH crashes (access violation, stack overflow, ...) go through neither the CRT report
+    // hook nor std::terminate - only this reaches them. Logs the faulting thread's real stack (via
+    // the exception's own CONTEXT record, not CaptureStackBackTrace's caller-frame guess) then lets
+    // the OS proceed to its normal unhandled-exception behavior (JIT debugger / process exit).
+    inline LONG WINAPI UnhandledExceptionFilterImpl(EXCEPTION_POINTERS* pInfo) noexcept
+    {
+        Log("SEH exception code=0x%08lX address=0x%p", pInfo->ExceptionRecord->ExceptionCode, pInfo->ExceptionRecord->ExceptionAddress);
+        if (pInfo->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && pInfo->ExceptionRecord->NumberParameters >= 2)
+        {
+            Log("SEH access violation %s address=0x%p"
+                , pInfo->ExceptionRecord->ExceptionInformation[0] ? "writing to" : "reading from"
+                , reinterpret_cast<void*>(pInfo->ExceptionRecord->ExceptionInformation[1]));
+        }
+
+        static std::once_flag SymbolsOnce;
+        std::call_once(SymbolsOnce, []
+        {
+            ::SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_UNDNAME);
+            (void)::SymInitialize(::GetCurrentProcess(), nullptr, TRUE);
+        });
+
+        HANDLE Process = ::GetCurrentProcess();
+        HANDLE Thread  = ::GetCurrentThread();
+        CONTEXT Ctx    = *pInfo->ContextRecord;
+
+        STACKFRAME64 Frame{};
+#if defined(_M_X64)
+        DWORD MachineType = IMAGE_FILE_MACHINE_AMD64;
+        Frame.AddrPC.Offset    = Ctx.Rip; Frame.AddrPC.Mode    = AddrModeFlat;
+        Frame.AddrFrame.Offset = Ctx.Rbp; Frame.AddrFrame.Mode = AddrModeFlat;
+        Frame.AddrStack.Offset = Ctx.Rsp; Frame.AddrStack.Mode = AddrModeFlat;
+#else
+        DWORD MachineType = IMAGE_FILE_MACHINE_I386;
+        Frame.AddrPC.Offset    = Ctx.Eip; Frame.AddrPC.Mode    = AddrModeFlat;
+        Frame.AddrFrame.Offset = Ctx.Ebp; Frame.AddrFrame.Mode = AddrModeFlat;
+        Frame.AddrStack.Offset = Ctx.Esp; Frame.AddrStack.Mode = AddrModeFlat;
+#endif
+
+        alignas(SYMBOL_INFO) char SymbolStorage[sizeof(SYMBOL_INFO) + 512]{};
+        auto* Symbol = reinterpret_cast<SYMBOL_INFO*>(SymbolStorage);
+        Symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        Symbol->MaxNameLen = 511;
+
+        for (int Index = 0; Index < 64; ++Index)
+        {
+            if (!::StackWalk64(MachineType, Process, Thread, &Frame, &Ctx, nullptr, ::SymFunctionTableAccess64, ::SymGetModuleBase64, nullptr))
+                break;
+            if (Frame.AddrPC.Offset == 0) break;
+
+            const DWORD64 Address = Frame.AddrPC.Offset;
+            DWORD64 Displacement = 0;
+            IMAGEHLP_LINE64 Line{};
+            Line.SizeOfStruct = sizeof(Line);
+            if (::SymFromAddr(Process, Address, &Displacement, Symbol))
+            {
+                DWORD LineDisplacement = 0;
+                if (::SymGetLineFromAddr64(Process, Address, &LineDisplacement, &Line))
+                    Log("SEH stack[%d] %s+0x%llx (%s:%lu)", Index, Symbol->Name
+                        , static_cast<unsigned long long>(Displacement), Line.FileName, static_cast<unsigned long>(Line.LineNumber));
+                else
+                    Log("SEH stack[%d] %s+0x%llx", Index, Symbol->Name, static_cast<unsigned long long>(Displacement));
+            }
+            else
+            {
+                Log("SEH stack[%d] address=0x%llx", Index, static_cast<unsigned long long>(Address));
+            }
+        }
+
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    inline void InstallUnhandledExceptionFilter() noexcept
+    {
+        ::SetUnhandledExceptionFilter(&UnhandledExceptionFilterImpl);
+        Log("SEH unhandled exception filter installed");
+    }
+#else
+    inline void InstallUnhandledExceptionFilter() noexcept {}
+#endif
+
     inline void Stop() noexcept
     {
         std::lock_guard Lock(g_TraceMutex);
