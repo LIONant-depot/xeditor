@@ -62,7 +62,7 @@ namespace xeditor
         notifier                              m_Notifier;      // the last user-visible error, shown as a modal
         console_log                           m_ConsoleLog;    // every command run through the host
         idle_work                             m_IdleWork;      // background maintenance that runs once the editor has been quiet for a while
-        std::function<bool(xundo::system&)>   m_OnBeforeEdit;  // write-lock gate: return false to refuse an edit
+        std::function<bool(xundo::system&, std::string_view)> m_OnBeforeEdit;  // write-lock gate, given the undo system and the command line: return false to refuse the edit
 
         // Domain host services (E29 wires its per-frame pumps and the Game.dll focus-reload).
         std::function<void()> m_OnPumpServices;
@@ -333,7 +333,7 @@ namespace xeditor
 
 
 
-        static std::string run_on(xundo::system& Sys, const std::string& Cmd) noexcept
+        std::string run_on(xundo::system& Sys, const std::string& Cmd) noexcept
 
         {
 
@@ -343,7 +343,10 @@ namespace xeditor
 
             const bool bQ = std::find(Q.begin(), Q.end(), Name) != Q.end();
 
-            return bQ ? Sys.Query(Cmd) : Sys.Execute(Cmd);
+            if (bQ) return Sys.Query(Cmd);
+            // Edits typed or piped go through the same write-lock gate as the ones made in the UI.
+            if (m_OnBeforeEdit && !m_OnBeforeEdit(Sys, Cmd)) return "Edit refused: resource is being edited in another session";
+            return Sys.Execute(Cmd);
 
         }
 

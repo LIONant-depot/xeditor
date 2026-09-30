@@ -23,10 +23,10 @@ namespace xeditor
 
     namespace details
     {
-        inline bool MayEdit(xundo::system& System) noexcept
+        inline bool MayEdit(xundo::system& System, std::string_view Cmd) noexcept
         {
             auto* pHost = host::current();
-            return pHost == nullptr || !pHost->m_OnBeforeEdit || pHost->m_OnBeforeEdit(System);
+            return pHost == nullptr || !pHost->m_OnBeforeEdit || pHost->m_OnBeforeEdit(System, Cmd);
         }
 
         // Executes and logs one command; false (after reporting) if it failed.
@@ -44,7 +44,7 @@ namespace xeditor
     // One undoable edit command.
     inline void Run(xundo::system& System, const std::string& Cmd) noexcept
     {
-        if (!details::MayEdit(System))
+        if (!details::MayEdit(System, Cmd))
         {
             constexpr std::string_view Refused = "Edit refused: resource is being edited in another session";
             NotifyError(Refused);
@@ -70,7 +70,7 @@ namespace xeditor
     // spent by a paste that did not happen).
     [[nodiscard]] inline bool RunGroup(xundo::system& System, std::string_view GroupName, const std::vector<std::string>& Cmds) noexcept
     {
-        if (!details::MayEdit(System)) return false;
+        for (auto& Cmd : Cmds) if (!details::MayEdit(System, Cmd)) return false;
         if (Cmds.empty()) return true;
         if (Cmds.size() == 1) return details::Execute(System, Cmds.front());       // a group of one is just a command
 
