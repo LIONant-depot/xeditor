@@ -361,6 +361,21 @@ namespace xeditor
 
 
 
+        // Every command the console can run, with its one-line help: the workspace's (bare) and each open session's ("Name\\Command").
+        struct routable { std::string m_FullName, m_Help; };
+        std::vector<routable> routable_commands() noexcept
+        {
+            std::vector<routable> Out;
+            auto Add = [&](const std::string& Prefix, xundo::system& Sys)
+            {
+                for (auto& N : Sys.GetCommandNames())      { const char* pH = Sys.GetCommandHelp(N);      Out.push_back({ Prefix + N, pH ? pH : "" }); }
+                for (auto& N : Sys.GetQueryCommandNames()) { const char* pH = Sys.GetQueryCommandHelp(N); Out.push_back({ Prefix + N, pH ? pH : "" }); }
+            };
+            Add({}, workspace());
+            for (auto& S : m_Sessions) if (S->document_ptr()) Add(S->display_name() + "\\", S->undo());
+            return Out;
+        }
+
         std::string dispatch(std::string_view Line) noexcept
 
         {
