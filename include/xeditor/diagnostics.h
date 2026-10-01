@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <exception>
 #include <cstdio>
+#include <cstring>
+#include <ctime>
 #include <filesystem>
 #include <iterator>
 #include <mutex>
@@ -15,6 +17,7 @@
 
 #if defined(_MSC_VER)
 #include <share.h>
+#include <process.h>
 #endif
 
 #if defined(_MSC_VER) && defined(_DEBUG)
@@ -48,9 +51,51 @@ namespace xeditor::diagnostics
         std::fflush(g_pTraceFile);
     }
 
+    // The trace file is truncated on every launch, so an assert that is clicked away is gone by the next run. Every line that is
+    // about something going wrong (a CRT report/assert and its stack, a terminate, a SEH crash) is therefore ALSO appended to
+    // LevelEditor.problems.log next to the trace - never truncated, time-stamped, flushed and closed per line so a crash cannot lose it.
+    // The smoke harness prints it (and the Vulkan validation errors) as a report at the end of a run.
+    inline bool IsProblemLine(const char* pFormat) noexcept
+    {
+        for (const char* pPrefix : { "CRT report", "CRT stack", "terminate:", "SEH exception", "SEH access", "SEH stack" })
+            if (std::strncmp(pFormat, pPrefix, std::strlen(pPrefix)) == 0) return true;
+        return false;
+    }
+
+    inline void AppendProblem(const char* pFormat, va_list Args) noexcept
+    {
+        std::error_code Ec;
+        const auto Path = std::filesystem::current_path(Ec) / "LevelEditor.problems.log";
+        FILE* pFile = nullptr;
+#if defined(_MSC_VER)
+        pFile = _fsopen(Path.string().c_str(), "a", _SH_DENYNO);
+#else
+        pFile = std::fopen(Path.string().c_str(), "a");
+#endif
+        if (pFile == nullptr) return;
+#if defined(_MSC_VER)
+        const unsigned long Pid = static_cast<unsigned long>(::_getpid());
+#else
+        const unsigned long Pid = 0;
+#endif
+        std::fprintf(pFile, "[pid %lu t=%lld] ", Pid, static_cast<long long>(std::time(nullptr)));
+        std::vfprintf(pFile, pFormat, Args);
+        std::fputc('\n', pFile);
+        std::fclose(pFile);
+    }
+
     inline void Log(const char* pFormat, ...) noexcept
     {
         std::lock_guard Lock(g_TraceMutex);
+
+        if (IsProblemLine(pFormat))
+        {
+            va_list ProblemArgs;
+            va_start(ProblemArgs, pFormat);
+            AppendProblem(pFormat, ProblemArgs);
+            va_end(ProblemArgs);
+        }
+
         if (g_pTraceFile == nullptr) return;
 
         va_list Args;
@@ -150,6 +195,16 @@ namespace xeditor::diagnostics
 
         Log("CRT report type=%d message=%s", ReportType, Message);
         LogCrtStack();
+
+        // An automated run (the smoke harness sets XEDITOR_NO_ASSERT_DIALOG) must not sit on a modal assert dialog nobody will click:
+        // the assert and its stack are already in LevelEditor.problems.log, so end the process (exit code 3, like abort()).
+        // A person at the keyboard still gets the normal dialog.
+        if (ReportType != _CRT_WARN)
+        {
+            char Flag[8]{}; size_t Len = 0;
+            if (::getenv_s(&Len, Flag, sizeof(Flag), "XEDITOR_NO_ASSERT_DIALOG") == 0 && Len > 1) ::_exit(3);
+        }
+
         if (pReturnValue != nullptr) *pReturnValue = 0;
         InHook = false;
         return 0;

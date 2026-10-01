@@ -139,9 +139,18 @@ namespace xeditor
 
         drawer& drawer_for(ImGuiID ViewportId) noexcept { return m_Drawers[ViewportId]; }
 
+        // The drawer of the focused OS window, toggled. What the Space key does - either through pump_drawer_input() below, or,
+        // when the app binds its keys to actions (m_bDrawerToggleByAction), through the app's own "toggle drawer" action.
+        void toggle_drawer_focused() noexcept
+        {
+            if (ImGuiViewport* vp = FocusedDrawerViewport()) { drawer& D = drawer_for(vp->ID); D.m_bOpen = !D.m_bOpen; }
+        }
+        bool m_bDrawerToggleByAction = false;
+
         // Space toggles the *focused* OS window's manifestation. Call from any editor; once/frame.
         void pump_drawer_input() noexcept
         {
+            if (m_bDrawerToggleByAction) return;
             const int Frame = ImGui::GetFrameCount();
             if (m_DrawerInputFrame == Frame) return;
             m_DrawerInputFrame = Frame;
