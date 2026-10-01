@@ -22,10 +22,12 @@ namespace xeditor
         return It != Haystack.end();
     }
 
-    // The same look as the asset browser's search box: a magnifying-glass placeholder, a gray "X" to clear and a rounded
-    // input. It edits a caller-owned string, so each panel keeps its own search text.
-    inline void RenderTreeSearchBar(std::string& SearchString, float AvailWidth) noexcept
+    // THE search box of the editors (the asset browser, the Level tree, the component selector, the command palette...): a
+    // magnifying-glass placeholder, a gray "X" that kills the whole text (shown once there is some) and a rounded input. It edits a caller-owned string, so each panel keeps
+    // its own search text. bFocus puts the keyboard in it (the frame a popup opens). True when the text changed this frame.
+    inline bool RenderTreeSearchBar(std::string& SearchString, float AvailWidth, bool bFocus = false) noexcept
     {
+        bool bChanged = false;
         std::array<char, 256> Buffer{};
         strcpy_s(Buffer.data(), Buffer.size(), SearchString.c_str());
 
@@ -33,7 +35,7 @@ namespace xeditor
         if (Buffer[0] != 0)
         {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-            if (ImGui::SmallButton("X")) Buffer[0] = 0;
+            if (ImGui::SmallButton("X")) { Buffer[0] = 0; bChanged = true; }
             ImGui::PopStyleColor();
             ImGui::SameLine(0, 0.1f);
         }
@@ -41,7 +43,8 @@ namespace xeditor
 
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 7.0f);
         ImGui::PushItemWidth(AvailWidth);
-        ImGui::InputText("##TreeSearch", Buffer.data(), Buffer.size());
+        if (bFocus) ImGui::SetKeyboardFocusHere();
+        bChanged |= ImGui::InputText("##TreeSearch", Buffer.data(), Buffer.size());
         const bool bActive  = ImGui::IsItemActive();
         const bool bHasText = (Buffer[0] != 0);
         if (!bActive && !bHasText)
@@ -58,6 +61,7 @@ namespace xeditor
         ImGui::PopStyleVar();
 
         SearchString = std::string_view(Buffer.data());
+        return bChanged;
     }
 }
 
