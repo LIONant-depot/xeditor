@@ -7,13 +7,13 @@ Status: **proposal, 2026-09-21; the non-UI half is implemented** (see "Implement
 
 E29 reaches shared state through ~30 free-standing globals (`g_pGameMgr` 285 uses, `g_pState` 52,
 `g_pLevelUndo` 24, `g_pGamePlugin` 20, `g_pEditorHost` 26, `g_pUndo`, `g_pConsoleLog`, `g_ScriptConfig`,
-`g_OpenTextureEditors`, `g_PendingRemoveDependencyConfirm`, ...) plus `e10::g_LibMgr` (231 uses) from the
+`g_OpenTextureEditors`, `g_PendingRemoveDependencyConfirm`, ...) plus `xresource_editor::g_LibMgr` (231 uses) from the
 asset manager. Symptoms:
 
 - `g_pEditorHost`, `g_pLevelUndo` and `g_pUndo` are each *defined more than once*, guarded by
   `#ifndef E29_G_P_..._DEFINED` macros, purely because of include order.
 - Plugins (xtexture.plugin) cannot build outside xGPU: they include `source/Examples/E10_*`.
-- 17 hand-rolled `BeginPopupModal` blocks (E29 8, E10 12 more), 41 `Debugger()` error call sites, ~30
+- 17 hand-rolled `BeginPopupModal` blocks (E29 8, xresource_editor 12 more), 41 `Debugger()` error call sites, ~30
   tooltips and ~160 hard-coded colours: nothing can be re-themed or made headless in one place.
 - Commands touch UI flags (`editor_state::m_bEntityInspectorDirty`) and `Debugger()` opens an ImGui modal,
   so a command is not usable without a UI.
@@ -53,7 +53,7 @@ auto& Lib = host.services().get<xresource_editor::library_mgr>(); // consumer re
 
 | Service | Depot | Notes |
 |---|---|---|
-| library / asset manager (was `e10::g_LibMgr`) | xresource_pipeline_v2 `source/editor` | already headless |
+| library / asset manager (was `xresource_editor::g_LibMgr`) | xresource_pipeline_v2 `source/editor` | already headless |
 | source control | xsource_control `source/editor` | provider + commands + panel |
 | scene / entity model, prefab authoring | xscene.plugin `source/Editor` | reused by Level and a future Prefab editor |
 | level document, Play | xlevel.plugin `source/Editor` | at most one Play process-wide (host) |

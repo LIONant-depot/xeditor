@@ -307,7 +307,7 @@ Host-owned xundo separate from each session. Process verbs (`help`/`list`/`open`
 | Service | Ownership |
 |---|---|
 | `xscheduler` | Process-wide; host holds/refcounts |
-| Asset / library mgr (`e10::g_LibMgr`, `xresource::g_Mgr`) | Existing globals initially; host may wrap accessors as the port forces clarity |
+| Asset / library mgr (`xresource_editor::g_LibMgr`, `xresource::g_Mgr`) | Existing globals initially; host may wrap accessors as the port forces clarity |
 | Command console | One per host process |
 | Icon atlas / ImGui fonts | Graphical hosts only |
 | Undo | **Per session**, never process-global |
