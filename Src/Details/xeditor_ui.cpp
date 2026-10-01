@@ -112,7 +112,7 @@ void name_dlg::operator() ( const char* pName, std::span<char>  Buffer )
 
     m_State = state::RUNNING;
 
-    if ( ImGui::BeginPopupModal( pName ) )
+    if ( ImGui::BeginPopupModal( pName, nullptr, ImGuiWindowFlags_NoSavedSettings ) )
     {
         ImGui::Text( "Name: " );
         ImGui::SameLine(); ImGui::InputText( "", Buffer.data(), Buffer.size() );

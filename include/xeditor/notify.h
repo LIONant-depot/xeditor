@@ -34,7 +34,7 @@ namespace xeditor
             }
 
             ImGui::SetNextWindowSize(ImVec2(420.0f, 0.0f), ImGuiCond_Appearing);
-            if (ImGui::BeginPopupModal("Error###xeditor.notify", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            if (ImGui::BeginPopupModal("Error###xeditor.notify", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
             {
                 ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + 400.0f);
                 ImGui::TextUnformatted(m_Message.c_str());
