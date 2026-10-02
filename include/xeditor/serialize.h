@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace xeditor
 {
@@ -25,7 +26,11 @@ namespace xeditor
         return S;
     }
 
-    // Base64 for arbitrary text (property paths and values) inside a space-delimited command line: plain ids need no encoding.
+    // Text (a property path, a value, a name, a whole file) as one value of a command line: in quotes, whatever it holds. The parser (xcmdline::parser::Tokenize) gives it back as it was.
+    // Commands take text as it is; only a blob of raw bytes (a packed vector) still travels as base64, because bytes are not text.
+    inline std::string Quote(std::string_view Text) noexcept { return xcmdline::parser::Quote(Text); }
+
+    // Base64 for BINARY data (a packed xmath value) inside a command line. Not for text: use Quote.
     inline std::string Base64Encode(const std::string& In) noexcept
     {
         static constexpr char Alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
