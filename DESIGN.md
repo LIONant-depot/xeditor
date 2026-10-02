@@ -44,7 +44,7 @@ Added: host/workspace CLI plane for non-resource commands (6.2-6.3) and Phase C 
 | Topic | Decision |
 |---|---|
 | Level is not the core | **Level is a peer editor** like Texture. It must not own the process shell. |
-| Real core (host services) | Resources, Assets, Source Control, Idle Work, Log, Commands, Compilation, Project Settings - plus the process CLI/workspace undo plane. |
+| Real core (host services) | Resources, Assets, Source Control, Idle Work, Logs, Commands, Compilation, Project Settings - plus the process CLI/workspace undo plane. |
 | Drawer | Unreal Content Drawer-like **edge overlay** toggled with **Space** (focus-gated: not while typing in text fields). Children dock **only inside** the drawer. |
 | Per OS window | **One logical drawer** (shared services/tabs identity). It **manifests** in OS windows: Space toggles the manifestation in the **focused OS window only**. At most **one manifestation per OS window**. Floated Texture = separate OS window, so its Space shows the same drawer there — not a second drawer product. |
 | Edge + size | User-chosen edge (default bottom). "Resize" = distance from that edge; the other axis stays near max. Remember size/edge per window. |
@@ -149,7 +149,7 @@ Clarify the three layers that E29 currently conflates:
 - **Edge:** User preference per window - bottom (default), top, left, or right.
 - **Size:** Primary dimension = distance from the chosen edge; orthogonal axis stays near maximized. Persist edge + depth (+ optional last tab) per window.
 - **Isolation:** Nested `DockSpace` + WindowClass so **only drawer children** dock inside.
-- **Starting tabs (v1):** Resources · Assets · Source Control · Idle Work · Log · Commands · Compilation · Project Settings.
+- **Starting tabs (v1):** Resources · Assets · Source Control · Idle Work · Logs · Commands · Compilation · Project Settings.
 - **Not in the drawer:** Play/Stop (Level), per-asset Texture Save/Compile toolbar, domain inspectors for the open resource.
 
 #### Local service panels inside a peer editor

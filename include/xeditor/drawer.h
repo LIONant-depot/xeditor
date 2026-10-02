@@ -36,7 +36,8 @@ struct drawer
     drawer_edge  m_Edge      = drawer_edge::bottom;
     float        m_Depth     = 280.0f;
     float        m_SideInset = 4.0f;
-    int          m_ActiveTab = 0; // index into kDrawerTabs
+    int          m_ActiveTab = 0; // index into kDrawerTabs (an OUTPUT: the tab the person has selected)
+    int          m_RequestTab = -1; // set by code that wants a tab selected (the Logs from a Feedback button, Back); applied by the next render, then cleared
     int          m_LastRenderFrame = -1; // host: render at most once per viewport per frame
 };
 
@@ -51,6 +52,9 @@ inline ImGuiViewport* FocusedDrawerViewport() noexcept
     }
     return vp;
 }
+
+// The index of the Logs tab in kTabs (DrawerRender): what "Open in Logs" selects.
+inline constexpr int kLogsDrawerTab = 4;
 
 inline void DrawerHandleToggle(drawer& D) noexcept
 {
@@ -194,7 +198,7 @@ inline void DrawerRender(drawer& D, ImGuiViewport* pViewport, T_RENDER_TAB&& Ren
             "Assets",
             "Source Control",
             "Idle Work",
-            "Log",
+            "Logs",
             "Commands",
             "Compilation",
             "Project Settings",
@@ -206,7 +210,7 @@ inline void DrawerRender(drawer& D, ImGuiViewport* pViewport, T_RENDER_TAB&& Ren
         {
             for (int i = 0; i < kTabCount; ++i)
             {
-                if (ImGui::BeginTabItem(kTabs[i]))
+                if (ImGui::BeginTabItem(kTabs[i], nullptr, D.m_RequestTab == i ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None))
                 {
                     D.m_ActiveTab = i;
                     ImGui::BeginChild("##DrawerTabBody", ImVec2(0, 0), false);
@@ -216,6 +220,7 @@ inline void DrawerRender(drawer& D, ImGuiViewport* pViewport, T_RENDER_TAB&& Ren
                 }
             }
             ImGui::EndTabBar();
+            D.m_RequestTab = -1;
         }
 
         if (D.m_Edge == drawer_edge::top || D.m_Edge == drawer_edge::left)

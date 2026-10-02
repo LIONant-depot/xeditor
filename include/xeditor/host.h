@@ -8,7 +8,7 @@
 
 #include "session.h"
 #include "drawer.h"
-#include "dependencies/xlog/source/xlog_hub.h"
+#include "dependencies/xlog/source/xlog_view.h"
 
 #include "registry.h"
 #include "log.h"
@@ -62,6 +62,7 @@ namespace xeditor
 
         notifier                              m_Notifier;      // the last user-visible error, shown as a modal
         xlog::hub                            m_Logs;          // every event, problem and operation (the xlog library; documentation/Editors/DESIGN_logs.md)
+        xlog::view_state                      m_LogsUi;        // what the Logs window remembers (query, preset, selection): it follows the person between editors
         console_log                           m_ConsoleLog;    // every command run through the host
         idle_work                             m_IdleWork;      // background maintenance that runs once the editor has been quiet for a while
         std::function<bool(xundo::system&, std::string_view)> m_OnBeforeEdit;  // write-lock gate, given the undo system and the command line: return false to refuse the edit
@@ -149,6 +150,55 @@ namespace xeditor
             if (ImGuiViewport* vp = FocusedDrawerViewport()) { drawer& D = drawer_for(vp->ID); D.m_bOpen = !D.m_bOpen; }
         }
         bool m_bDrawerToggleByAction = false;
+
+        // Opens the focused window's drawer on the Logs tab with Query in the query bar ("op:12" for one operation, empty for everything).
+        void show_logs(const std::string& Query) noexcept
+        {
+            ImGuiViewport* vp = FocusedDrawerViewport();
+            if (vp == nullptr) return;
+            drawer& D = drawer_for(vp->ID);
+            // Back returns here: the Logs window as it was, and what the drawer had in front (another tab, or closed), unless the person was already looking at the Logs.
+            const bool bWasOnLogs = D.m_bOpen && D.m_ActiveTab == kLogsDrawerTab;
+            m_LogsUi.PushBack(!bWasOnLogs, D.m_ActiveTab, D.m_bOpen);
+            D.m_bOpen = true;
+            D.m_ActiveTab = D.m_RequestTab = kLogsDrawerTab;
+            std::snprintf(m_LogsUi.m_Query, sizeof(m_LogsUi.m_Query), "%s", Query.c_str());
+            m_LogsUi.m_RequestPage = Query.empty() ? 0 : 1;           // a filtered view is evidence (Events: the whole output of that operation); with no filter the state is the better start
+            m_LogsUi.m_View = xlog::problem_view::All;
+            m_LogsUi.m_bFollow = false;                               // stay where the filter puts the reader; the list is short and does not need to chase the newest
+            m_LogsUi.m_Selected = 0; m_LogsUi.m_Expanded.clear();
+            m_LogsUi.m_BackButton[0] = m_LogsUi.m_BackButton[1] = -1.0f;          // drawn again next frame, where it now is
+        }
+
+        // The Logs window's Forward: back to the Logs view Back left, and the drawer on the Logs tab again.
+        bool logs_forward() noexcept
+        {
+            xlog::view_snapshot Entry;
+            if (!m_LogsUi.PopForward(Entry)) return false;
+            if (Entry.m_bHasReturn)
+                if (ImGuiViewport* vp = FocusedDrawerViewport())
+                {
+                    drawer& D = drawer_for(vp->ID);
+                    D.m_ActiveTab = D.m_RequestTab = kLogsDrawerTab;
+                    D.m_bOpen = true;
+                }
+            return true;
+        }
+
+        // The Logs window's Back: the window returns to where it was and the drawer to what it had in front (the tab the person came from, or closed).
+        bool logs_back() noexcept
+        {
+            xlog::view_snapshot Entry;
+            if (!m_LogsUi.PopBack(Entry)) return false;
+            if (Entry.m_bHasReturn)
+                if (ImGuiViewport* vp = FocusedDrawerViewport())
+                {
+                    drawer& D = drawer_for(vp->ID);
+                    D.m_ActiveTab = D.m_RequestTab = Entry.m_ReturnTab;
+                    D.m_bOpen = Entry.m_bReturnDrawerOpen;
+                }
+            return true;
+        }
 
         // Space toggles the *focused* OS window's manifestation. Call from any editor; once/frame.
         void pump_drawer_input() noexcept

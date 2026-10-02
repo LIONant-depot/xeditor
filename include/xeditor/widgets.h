@@ -22,10 +22,35 @@ namespace xeditor
         return It != Haystack.end();
     }
 
+    // THE back / forward pair of the editors (the asset browser's path bar uses these same two glyphs): transparent arrow buttons, greyed out when there is nowhere
+    // to go, each with a tooltip saying where it goes (also while greyed: it says why). Sets bBack / bForward on the frame one is pressed. The centres of the buttons come
+    // back through pBackAt / pForwardAt when given (screen coordinates), for whoever wants to point at them. Both end with the cursor on the same line, after the pair.
+    inline void RenderBackForwardButtons(bool bCanBack, bool bCanForward, bool& bBack, bool& bForward, const char* pBackTip = nullptr, const char* pForwardTip = nullptr
+        , float* pBackAt = nullptr, float* pForwardAt = nullptr) noexcept
+    {
+        auto One = [](const char* pGlyph, const char* pId, bool bEnabled, const char* pTip, float* pAt) noexcept
+        {
+            ImGui::BeginDisabled(!bEnabled);
+            const bool bPressed = ImGui::Button(std::string(pGlyph).append("##").append(pId).c_str());
+            ImGui::EndDisabled();
+            if (pTip && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("%s", pTip);
+            if (pAt) { pAt[0] = ImGui::GetItemRectMin().x + ImGui::GetItemRectSize().x * 0.5f; pAt[1] = ImGui::GetItemRectMin().y + ImGui::GetItemRectSize().y * 0.5f; }
+            return bPressed && bEnabled;
+        };
+        bBack = bForward = false;
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+        bBack = One("\xEE\x9C\xAB", "back", bCanBack, pBackTip, pBackAt);
+        ImGui::SameLine(0, 2.0f);
+        bForward = One("\xEE\x9C\xAA", "forward", bCanForward, pForwardTip, pForwardAt);
+        ImGui::PopStyleColor();
+        ImGui::SameLine(0, 6.0f);
+    }
+
     // THE search box of the editors (the asset browser, the Level tree, the component selector, the command palette...): a
     // magnifying-glass placeholder, a gray "X" that kills the whole text (shown once there is some) and a rounded input. It edits a caller-owned string, so each panel keeps
-    // its own search text. bFocus puts the keyboard in it (the frame a popup opens). True when the text changed this frame.
-    inline bool RenderTreeSearchBar(std::string& SearchString, float AvailWidth, bool bFocus = false) noexcept
+    // its own search text. bFocus puts the keyboard in it (the frame a popup opens). pHelp, when given, is what hovering the box says: for a search that has a
+    // grammar of its own (the Logs' "sev>=error channel:game.*"), so it explains itself without a second kind of box. True when the text changed this frame.
+    inline bool RenderTreeSearchBar(std::string& SearchString, float AvailWidth, bool bFocus = false, const char* pHelp = nullptr) noexcept
     {
         bool bChanged = false;
         std::array<char, 256> Buffer{};
@@ -47,15 +72,13 @@ namespace xeditor
         bChanged |= ImGui::InputText("##TreeSearch", Buffer.data(), Buffer.size());
         const bool bActive  = ImGui::IsItemActive();
         const bool bHasText = (Buffer[0] != 0);
+        if (pHelp && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", pHelp);
         if (!bActive && !bHasText)
         {
-            const ImVec2 InputPos  = ImGui::GetItemRectMin();
-            const ImVec2 CursorPos = ImGui::GetCursorScreenPos();
-            ImGui::SetCursorScreenPos(ImVec2(InputPos.x + 10.0f, InputPos.y + 4.0f));
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-            ImGui::Text("\xee\x9c\xa1");
-            ImGui::PopStyleColor();
-            ImGui::SetCursorScreenPos(CursorPos);
+            // Drawn on the window's draw list, not with Text + SetCursorScreenPos: that would leave the layout believing the icon was the last item, and anything
+            // placed beside the box (SameLine) would land next to the icon instead of after the box.
+            const ImVec2 InputPos = ImGui::GetItemRectMin();
+            ImGui::GetWindowDrawList()->AddText(ImVec2(InputPos.x + 10.0f, InputPos.y + 4.0f), IM_COL32(128, 128, 128, 255), "\xee\x9c\xa1");
         }
         ImGui::PopItemWidth();
         ImGui::PopStyleVar();
