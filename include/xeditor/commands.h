@@ -18,6 +18,7 @@ namespace xeditor
     // Adds a line to the host's console log (no-op without a host).
     inline void LogConsole(std::string Text, log_source Source) noexcept
     {
+        if (Source != log_source::System) RecordCommand(Text, Source);          // a command (typed, clicked or piped); replies and errors are not
         if (auto* pHost = host::current()) pHost->m_ConsoleLog.push_back({ std::move(Text), Source });
     }
 

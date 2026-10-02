@@ -8,6 +8,7 @@
 
 #include "session.h"
 #include "drawer.h"
+#include "dependencies/xlog/source/xlog_hub.h"
 
 #include "registry.h"
 #include "log.h"
@@ -43,7 +44,7 @@ namespace xeditor
         // Constructing a host makes it current; destroying it clears that.
         static inline host* s_pCurrent = nullptr;
         static host* current() noexcept { return s_pCurrent; }
-        host() noexcept { s_pCurrent = this; }
+        host() noexcept { s_pCurrent = this; m_Logs.make_current(); }
         ~host() noexcept { release_current(); }
         void release_current() noexcept { if (s_pCurrent == this) s_pCurrent = nullptr; }
 
@@ -60,6 +61,7 @@ namespace xeditor
         xundo::system*                        m_pExternalWorkspace = nullptr;
 
         notifier                              m_Notifier;      // the last user-visible error, shown as a modal
+        xlog::hub                            m_Logs;          // every event, problem and operation (the xlog library; documentation/Editors/DESIGN_logs.md)
         console_log                           m_ConsoleLog;    // every command run through the host
         idle_work                             m_IdleWork;      // background maintenance that runs once the editor has been quiet for a while
         std::function<bool(xundo::system&, std::string_view)> m_OnBeforeEdit;  // write-lock gate, given the undo system and the command line: return false to refuse the edit
@@ -69,7 +71,8 @@ namespace xeditor
         std::function<void()> m_OnFocusRegain;
         std::function<void()> m_OnSourceChanged;   // files changed behind the editor's back (a source control pull)
 
-        void pump_services() noexcept { m_IdleWork.Pump(); if (m_OnPumpServices) m_OnPumpServices(); }
+        // The host thread commits what the other threads recorded (a bounded batch per frame; a backlog is reported by LogStatus, never dropped silently).
+        void pump_services() noexcept { m_Logs.Drain(); m_IdleWork.Pump(); if (m_OnPumpServices) m_OnPumpServices(); }
         void on_focus_regain() noexcept { if (m_OnFocusRegain) m_OnFocusRegain(); }
 
         // --- Edit vs view write locks (DESIGN 4.2) ---
@@ -508,7 +511,30 @@ namespace xeditor
     {
         std::printf("%.*s\n", static_cast<int>(Message.size()), Message.data());
         std::fflush(stdout);                                  // flushed so a crash cannot swallow the line that explains it
-        if (auto* pHost = host::current()) pHost->m_Notifier.raise(Message);
+        if (auto* pHost = host::current())
+        {
+            pHost->m_Notifier.raise(Message);
+            // Also an event of the Logs: a diagnostic with no stable code, so its problem is labelled a heuristic grouping (numbers and quoted names are not part of it).
+            xlog::event E;
+            E.m_Producer = "xlion.notify"; E.m_Origin = { xlog::origin::type::System, "editor", 0 };
+            E.m_Severity = xlog::severity::Error; E.m_Kind = xlog::kind::Diagnostic; E.m_Channel = "editor.ui"; E.m_bHeuristic = true;
+            xlog::SetMessage(E, Message);
+            pHost->m_Logs.Emit(std::move(E));
+        }
+    }
+
+    // A command run through the host (typed, clicked, or from the pipe), recorded as an event of kind Command. The Logs' own commands are not
+    // recorded: asking about the log must not fill it.
+    inline void RecordCommand(std::string_view Text, log_source Source) noexcept
+    {
+        auto* pHost = host::current();
+        if (!pHost || Text.empty() || Text.substr(0, 3) == "Log") return;
+        xlog::event E;
+        E.m_Producer = "xlion.commands";
+        E.m_Origin = { xlog::origin::type::System, Source == log_source::Pipe ? "pipe" : Source == log_source::User ? "user" : "system", 0 };
+        E.m_Severity = xlog::severity::Info; E.m_Kind = xlog::kind::Command; E.m_Channel = "editor.command";
+        xlog::SetMessage(E, Text);
+        pHost->m_Logs.Emit(std::move(E));
     }
 }
 

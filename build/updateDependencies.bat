@@ -12,6 +12,14 @@ powershell write-host -fore White ----------------------------------------------
 echo.
 
 rem ------------------------------------------------------------
+rem XLOG
+rem ------------------------------------------------------------
+:XLOG
+rmdir "../dependencies/xlog" /S /Q
+git clone https://github.com/LIONant-depot/xlog.git "../dependencies/xlog"
+if %ERRORLEVEL% GEQ 1 goto :ERROR
+
+rem ------------------------------------------------------------
 rem XGPU
 rem ------------------------------------------------------------
 :XGPU
