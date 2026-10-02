@@ -9,6 +9,7 @@
 #include "session.h"
 #include "drawer.h"
 #include "dependencies/xlog/source/xlog_view.h"
+#include "dependencies/xlog/source/xlog_remote.h"
 #include "dependencies/xlog/editor/xlog_badge.h"
 #include "open_ref.h"
 
@@ -65,6 +66,7 @@ namespace xeditor
         notifier                              m_Notifier;      // the last error that needed the person (a modal)
         toaster                               m_Toaster;       // the errors of what the person just did, as lines that expire
         xlog::hub                            m_Logs;          // every event, problem and operation (the xlog library; documentation/Editors/DESIGN_logs.md)
+        xlog::remote::server                  m_RemoteLogs;    // runtimes of other processes speaking into the Logs (declared after the hub: it stops before the hub goes)
         xlog::view_state                      m_LogsUi;        // what the Logs window remembers (query, preset, selection): it follows the person between editors
         console_log                           m_ConsoleLog;    // every command run through the host
         idle_work                             m_IdleWork;      // background maintenance that runs once the editor has been quiet for a while
