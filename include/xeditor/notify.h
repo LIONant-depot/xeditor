@@ -3,6 +3,7 @@
 #pragma once
 
 #include "imgui.h"
+#include "popup.h"
 
 #include <string>
 #include <string_view>
@@ -15,11 +16,15 @@ namespace xeditor
     {
         std::string m_Message;
         bool        m_bOpenRequested = false;
+        ImVec2      m_Anchor         = {};       // where the popup opens: the middle of the editor that had the focus when the error was raised
+        bool        m_bHasAnchor     = false;
 
         void raise(std::string_view Message) noexcept
         {
             m_Message        = Message;
             m_bOpenRequested = true;            // only a flag: the popup is opened from render(), never from the caller's ID scope
+            m_bHasAnchor     = ImGui::GetCurrentContext() != nullptr;      // a headless host has no UI
+            if (m_bHasAnchor) m_Anchor = EditorRect(true).GetCenter();     // the error belongs to the editor being used now, not to whoever draws the popup
         }
 
         // Call once per frame from the top-level ID scope. OpenPopup hashes its id against the ID stack of the call site,
@@ -34,7 +39,7 @@ namespace xeditor
             }
 
             ImGui::SetNextWindowSize(ImVec2(420.0f, 0.0f), ImGuiCond_Appearing);
-            if (ImGui::BeginPopupModal("Error###xeditor.notify", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+            if (xeditor::BeginModal("Error###xeditor.notify", ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings, m_bHasAnchor ? &m_Anchor : nullptr))
             {
                 ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + 400.0f);
                 ImGui::TextUnformatted(m_Message.c_str());
