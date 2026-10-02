@@ -9,6 +9,8 @@
 #include "session.h"
 #include "drawer.h"
 #include "dependencies/xlog/source/xlog_view.h"
+#include "dependencies/xlog/editor/xlog_badge.h"
+#include "open_ref.h"
 
 #include "registry.h"
 #include "log.h"
@@ -60,7 +62,8 @@ namespace xeditor
 
         xundo::system*                        m_pExternalWorkspace = nullptr;
 
-        notifier                              m_Notifier;      // the last user-visible error, shown as a modal
+        notifier                              m_Notifier;      // the last error that needed the person (a modal)
+        toaster                               m_Toaster;       // the errors of what the person just did, as lines that expire
         xlog::hub                            m_Logs;          // every event, problem and operation (the xlog library; documentation/Editors/DESIGN_logs.md)
         xlog::view_state                      m_LogsUi;        // what the Logs window remembers (query, preset, selection): it follows the person between editors
         console_log                           m_ConsoleLog;    // every command run through the host
@@ -183,6 +186,40 @@ namespace xeditor
                     D.m_bOpen = true;
                 }
             return true;
+        }
+
+        // F8 / Shift+F8: the next or previous problem of the Logs window's list (its query and preset, worst first), selected there and its source opened - with the drawer closed
+        // too, as an IDE does. Wraps around. False when there is no problem to go to.
+        bool logs_step_problem(int Direction) noexcept
+        {
+            for (int i = 0; i < 64 && m_Logs.Drain(1u << 16) > 0; ++i) {}
+            xlog::BuildProblemRows(m_Logs, m_LogsUi, std::string_view{}, /*bRefresh*/ true);
+            const auto& Rows = m_LogsUi.m_Rows;
+            if (Rows.empty()) return false;
+            const auto It = std::find(Rows.begin(), Rows.end(), m_LogsUi.m_Selected);
+            std::size_t At = 0;
+            if (It == Rows.end()) At = Direction > 0 ? 0 : Rows.size() - 1;
+            else At = (static_cast<std::size_t>(It - Rows.begin()) + (Direction > 0 ? 1 : Rows.size() - 1)) % Rows.size();
+            m_LogsUi.m_Selected = Rows[At];
+            m_LogsUi.SetExpanded(Rows[At], true);
+            m_LogsUi.m_bScrollToSelected = true;
+            if (const xlog::problem* P = m_Logs.FindProblem(Rows[At]))
+            {
+                if (P->m_Site.Valid()) OpenRef(P->m_Site);
+                else if (P->m_Subject.Valid()) OpenRef(P->m_Subject);
+            }
+            return true;
+        }
+
+        // The notifications of the frame, once, from the top-level ID scope: the error modal, the toasts, and the Logs badge while the drawer is not showing the Logs.
+        void render_notifications() noexcept
+        {
+            m_Notifier.render();
+            m_Toaster.render([this] { show_logs(std::string()); }, 40.0f);
+            bool bLogsShown = false;
+            if (ImGuiViewport* vp = FocusedDrawerViewport()) { const drawer& D = drawer_for(vp->ID); bLogsShown = D.m_bOpen && D.m_ActiveTab == kLogsDrawerTab; }
+            if (bLogsShown) m_LogsUi.m_BadgeAt[0] = m_LogsUi.m_BadgeAt[1] = -1.0f;
+            else xlog::RenderBadge(m_Logs, m_LogsUi, [this] { show_logs(std::string()); });
         }
 
         // The Logs window's Back: the window returns to where it was and the drawer to what it had in front (the tab the person came from, or closed).
@@ -556,14 +593,16 @@ namespace xeditor
     };
 
 
-    // Tells the person something went wrong: always in the process log, and as a modal when the host has a UI.
-    inline void NotifyError(std::string_view Message) noexcept
+    // Tells the person something went wrong. Always in the process log and in the Logs (so the badge counts it); how loudly is the style: nothing more (Badge, the default),
+    // a toast (the person just did something that failed), or a modal (they must decide or acknowledge, or the editor cannot go on). See notify_style.
+    inline void NotifyError(std::string_view Message, notify_style Style = notify_style::Badge) noexcept
     {
         std::printf("%.*s\n", static_cast<int>(Message.size()), Message.data());
         std::fflush(stdout);                                  // flushed so a crash cannot swallow the line that explains it
         if (auto* pHost = host::current())
         {
-            pHost->m_Notifier.raise(Message);
+            if (Style == notify_style::Modal)      pHost->m_Notifier.raise(Message);
+            else if (Style == notify_style::Toast) pHost->m_Toaster.raise(Message);
             // Also an event of the Logs: a diagnostic with no stable code, so its problem is labelled a heuristic grouping (numbers and quoted names are not part of it).
             xlog::event E;
             E.m_Producer = "xlion.notify"; E.m_Origin = { xlog::origin::type::System, "editor", 0 };
@@ -572,6 +611,9 @@ namespace xeditor
             pHost->m_Logs.Emit(std::move(E));
         }
     }
+
+    inline void NotifyToast(std::string_view Message) noexcept { NotifyError(Message, notify_style::Toast); }
+    inline void NotifyModal(std::string_view Message) noexcept { NotifyError(Message, notify_style::Modal); }
 
     // A command run through the host (typed, clicked, or from the pipe), recorded as an event of kind Command. The Logs' own commands are not
     // recorded: asking about the log must not fill it.

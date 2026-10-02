@@ -36,7 +36,7 @@ namespace xeditor
             LogConsole(Cmd, log_source::User);
             auto Err = System.Execute(Cmd);
             if (Err.empty()) return true;
-            NotifyError(std::format("command failed: '{}' ({})", Cmd, Err));
+            NotifyToast(std::format("command failed: '{}' ({})", Cmd, Err));
             LogConsole(std::move(Err), log_source::System);
             return false;
         }
@@ -48,7 +48,7 @@ namespace xeditor
         if (!details::MayEdit(System, Cmd))
         {
             constexpr std::string_view Refused = "Edit refused: resource is being edited in another session";
-            NotifyError(Refused);
+            NotifyToast(Refused);
             LogConsole(std::string(Refused), log_source::System);
             return;
         }
@@ -63,7 +63,7 @@ namespace xeditor
         auto Result = System.Query(Cmd);
         if (Result.empty()) return;
         const bool bFailed = Result.find(": ") != std::string::npos || Result.starts_with("Unable") || Result.starts_with("Malformed");
-        if (bFailed) NotifyError(std::format("command failed: '{}' ({})", Cmd, Result));
+        if (bFailed) NotifyToast(std::format("command failed: '{}' ({})", Cmd, Result));
         LogConsole(std::move(Result), log_source::System);
     }
 
@@ -78,7 +78,7 @@ namespace xeditor
         for (auto& Cmd : Cmds) LogConsole(Cmd, log_source::User);
         auto Err = System.Execute(GroupName, Cmds);
         if (Err.empty()) return true;
-        NotifyError(std::format("grouped command failed: '{}' ({})", GroupName, Err));
+        NotifyToast(std::format("grouped command failed: '{}' ({})", GroupName, Err));
         LogConsole(std::move(Err), log_source::System);
         return false;
     }

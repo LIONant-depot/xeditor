@@ -9,6 +9,8 @@
 
 #include "imgui.h"
 
+#include <filesystem>
+
 #ifndef NOMINMAX
     #define NOMINMAX
 #endif
@@ -24,7 +26,9 @@ namespace xeditor
         if (R.m_Type != xlog::ref::type::File || R.m_Path.empty()) return;
         const std::string Location = R.m_Line > 0 ? std::format("{}:{}", R.m_Path, R.m_Line) : R.m_Path;
         ImGui::SetClipboardText(Location.c_str());
-        ShellExecuteA(nullptr, "open", R.m_Path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        std::error_code Ec;
+        if (std::filesystem::exists(R.m_Path, Ec))          // a path that is not there (a compiler's output from another machine) is not handed to the shell: it would answer with a dialog
+            ShellExecuteA(nullptr, "open", R.m_Path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     }
 }
 
