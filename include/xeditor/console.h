@@ -61,12 +61,26 @@ namespace xeditor
                 std::string Request;
                 char        Buf[4096];
                 DWORD       BytesRead = 0;
-                while (ReadFile(hPipe, Buf, sizeof(Buf) - 1, &BytesRead, nullptr) && BytesRead > 0)
-                {
-                    Buf[BytesRead] = 0;
-                    Request += Buf;
-                    if (Request.find('\n') != std::string::npos) break;
-                }
+                // One command is the text up to the first line break that is not inside quotes: a quoted value may hold line breaks (multi-line text), so a client
+                // sends the whole command and the line break that ends it. A command that ends inside a quote and sends no more for two seconds is handed over
+                // as it is (the parser says what is wrong with it) instead of keeping the client waiting.
+                constexpr std::size_t kMaxRequest = 4u << 20;
+                while (Request.size() < kMaxRequest && ReadFile(hPipe, Buf, sizeof(Buf), &BytesRead, nullptr) && BytesRead > 0)
+                {
+                    Request.append(Buf, BytesRead);
+                    if (Request.find('\n') == std::string::npos) continue;
+                    bool bOpen = false;
+                    xcmdline::parser::Tokenize(Request, &bOpen);
+                    if (!bOpen) break;
+                    bool bMore = false;
+                    for (int Wait = 0; Wait < 40 && !bMore; ++Wait)
+                    {
+                        DWORD Avail = 0;
+                        bMore = PeekNamedPipe(hPipe, nullptr, 0, nullptr, &Avail, nullptr) && Avail > 0;
+                        if (!bMore) std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                    }
+                    if (!bMore) break;
+                }
                 while (!Request.empty() && (Request.back() == '\n' || Request.back() == '\r')) Request.pop_back();
 
                 std::string Response;

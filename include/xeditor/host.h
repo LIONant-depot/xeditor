@@ -560,7 +560,8 @@ namespace xeditor
 
 
 
-            const auto Slash = Line.find('\\');
+            // "Session\Command ...": the session is the first word. A backslash later in the line is part of an argument (a Windows path), never a session.
+            const auto Slash = Line.find('\\') < Line.find_first_of(" \t\"") ? Line.find('\\') : std::string_view::npos;
 
             if (Slash != std::string_view::npos)
 
