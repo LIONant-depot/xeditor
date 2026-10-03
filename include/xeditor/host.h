@@ -123,23 +123,7 @@ namespace xeditor
                 m_WriteLocks.end());
         }
 
-        // --- Play singleton (DESIGN 4.6) — opaque owner (e.g. &editor_state) ---
-        void* m_pPlayOwner = nullptr;
-
-        bool try_begin_play(void* pOwner) noexcept
-        {
-            if (pOwner == nullptr) return false;
-            if (m_pPlayOwner != nullptr && m_pPlayOwner != pOwner) return false;
-            m_pPlayOwner = pOwner;
-            return true;
-        }
-
-        void end_play(void* pOwner) noexcept
-        {
-            if (m_pPlayOwner == pOwner) m_pPlayOwner = nullptr;
-        }
-
-        bool is_play_active() const noexcept { return m_pPlayOwner != nullptr; }
+        // There is no Play singleton: every Level editor runs on its own copy of the engine, so any number of them can play at the same time.
 
         // --- Host Drawer (DESIGN 2.2 / 4.5): one logical drawer, per-OS-window manifestation ---
         std::unordered_map<ImGuiID, drawer>          m_Drawers;
