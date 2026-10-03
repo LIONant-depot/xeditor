@@ -44,6 +44,9 @@ namespace xeditor
     inline bool BeginModal( const char* pName, ImGuiWindowFlags Flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings, const ImVec2* pCenter = nullptr ) noexcept
     {
         CenterNextPopup(pCenter);
+        // A minimum width. Wrapped text in a window that sizes itself is measured with no width on the first frame (one letter per line: very tall), and the window is placed with that size,
+        // so it ends up half a screen away from where it was asked to open once it shrinks to its text.
+        ImGui::SetNextWindowSizeConstraints(ImVec2(360.0f, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
         return ImGui::BeginPopupModal(pName, nullptr, Flags);
     }
 }
