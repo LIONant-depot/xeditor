@@ -15,6 +15,7 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "widgets.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -136,16 +137,20 @@ inline void DrawerDepthGrip(drawer& D) noexcept
     ImDrawList* dl = ImGui::GetWindowDrawList();
     const ImVec2 Max = ImGui::GetItemRectMax();
     const ImU32 Col = ImGui::GetColorU32(bHovered || bActive ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator);
+    const float Thickness = (bHovered || bActive) ? 3.0f : 2.0f;
     if (bHorizontal)
     {
         const float Y = (D.m_Edge == drawer_edge::bottom) ? Cursor.y + Hit * 0.5f : Max.y - Hit * 0.5f;
-        dl->AddLine(ImVec2(Cursor.x, Y), ImVec2(Max.x, Y), Col, 2.0f);
+        dl->AddLine(ImVec2(Cursor.x, Y), ImVec2(Max.x, Y), Col, Thickness);
     }
     else
     {
         const float X = (D.m_Edge == drawer_edge::left) ? Max.x - Hit * 0.5f : Cursor.x + Hit * 0.5f;
-        dl->AddLine(ImVec2(X, Cursor.y), ImVec2(X, Max.y), Col, 2.0f);
+        dl->AddLine(ImVec2(X, Cursor.y), ImVec2(X, Max.y), Col, Thickness);
     }
+
+    // The dots in the middle: where the drag bar is.
+    xeditor::DrawSplitterGrip(dl, Cursor, Max, bHorizontal, bHovered || bActive);
 }
 
 template<typename T_RENDER_TAB>

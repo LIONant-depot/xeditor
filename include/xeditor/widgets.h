@@ -14,6 +14,19 @@
 
 namespace xeditor
 {
+    // The dots in the middle of a splitter (the bar that is dragged to resize a panel): they say where the drag bar is, which a thin line does not. Min/Max are the rectangle of the bar;
+    // bAlongX is true for a bar that runs left to right (dragged up and down), false for one that runs top to bottom. Brighter while the mouse is on it or it is dragged.
+    inline void DrawSplitterGrip(ImDrawList* pList, ImVec2 Min, ImVec2 Max, bool bAlongX, bool bHot) noexcept
+    {
+        const ImVec2 Center((Min.x + Max.x) * 0.5f, (Min.y + Max.y) * 0.5f);
+        const ImU32  Dot = ImGui::GetColorU32(bHot ? ImGuiCol_Text : ImGuiCol_TextDisabled);
+        for (int i = -2; i <= 2; ++i)
+        {
+            const ImVec2 At = bAlongX ? ImVec2(Center.x + i * 6.0f, Center.y) : ImVec2(Center.x, Center.y + i * 6.0f);
+            pList->AddRectFilled(ImVec2(At.x - 1.5f, At.y - 1.5f), ImVec2(At.x + 1.5f, At.y + 1.5f), Dot);
+        }
+    }
+
     inline bool ContainsCaseInsensitive(std::string_view Haystack, std::string_view Needle) noexcept
     {
         if (Needle.empty()) return true;
