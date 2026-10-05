@@ -213,9 +213,11 @@ inline void DrawerRender(drawer& D, ImGuiViewport* pViewport, T_RENDER_TAB&& Ren
 
         if (ImGui::BeginTabBar("##DrawerTabs", ImGuiTabBarFlags_FittingPolicyScroll))
         {
+            // The request this frame draws: one made while the tabs are drawing (a menu item of the Assets tab that finds a resource asks for the Resources tab) is for the next frame, not lost.
+            const int RequestedTab = D.m_RequestTab;
             for (int i = 0; i < kTabCount; ++i)
             {
-                if (ImGui::BeginTabItem(kTabs[i], nullptr, D.m_RequestTab == i ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None))
+                if (ImGui::BeginTabItem(kTabs[i], nullptr, RequestedTab == i ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None))
                 {
                     D.m_ActiveTab = i;
                     ImGui::BeginChild("##DrawerTabBody", ImVec2(0, 0), false);
@@ -225,7 +227,7 @@ inline void DrawerRender(drawer& D, ImGuiViewport* pViewport, T_RENDER_TAB&& Ren
                 }
             }
             ImGui::EndTabBar();
-            D.m_RequestTab = -1;
+            if (D.m_RequestTab == RequestedTab) D.m_RequestTab = -1;
         }
 
         if (D.m_Edge == drawer_edge::top || D.m_Edge == drawer_edge::left)
