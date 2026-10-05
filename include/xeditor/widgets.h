@@ -8,12 +8,29 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <cstring>
 #include <string>
 #include <string_view>
 
 namespace xeditor
 {
+    // The Save button while there is something unsaved: it breathes from the grey of the theme's buttons towards green and back, slowly (one breath every 4 seconds, never a saturated green): it reminds,
+    // it does not alarm. Push it before the button and pop what it returns (3 colors) after it. The same for every Save of the editors.
+    inline int PushSavePulse() noexcept
+    {
+        constexpr float Period = 4.0f, Strength = 0.6f;
+        const float     Phase  = 0.5f - 0.5f * std::cos(static_cast<float>(ImGui::GetTime()) * (2.0f * 3.14159265f / Period));      // 0 .. 1 .. 0, smooth
+        const ImVec4    Green(0.22f, 0.62f, 0.33f, 1.0f);
+        for (const ImGuiCol Id : { ImGuiCol_Button, ImGuiCol_ButtonHovered, ImGuiCol_ButtonActive })
+        {
+            const ImVec4 Base = ImGui::GetStyleColorVec4(Id);
+            const float  K    = Phase * Strength;
+            ImGui::PushStyleColor(Id, ImVec4(Base.x + (Green.x - Base.x) * K, Base.y + (Green.y - Base.y) * K, Base.z + (Green.z - Base.z) * K, Base.w));
+        }
+        return 3;
+    }
+
     // The dots in the middle of a splitter (the bar that is dragged to resize a panel): they say where the drag bar is, which a thin line does not. Min/Max are the rectangle of the bar;
     // bAlongX is true for a bar that runs left to right (dragged up and down), false for one that runs top to bottom. Brighter while the mouse is on it or it is dragged.
     inline void DrawSplitterGrip(ImDrawList* pList, ImVec2 Min, ImVec2 Max, bool bAlongX, bool bHot) noexcept
