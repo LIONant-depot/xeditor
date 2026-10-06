@@ -75,16 +75,49 @@ namespace xeditor::hint
         ImGui::Dummy(ImVec2(Max.x - Min.x, Max.y - Min.y));
     }
 
-    // The card itself, in a tooltip window at the cursor. The caller has already decided it should show.
-    inline void Draw(const content& C) noexcept
+    // The window of the card, for what draws its own content (a list, a table): the same placement, padding and MAXIMUM WIDTH (400 px) as every hint, so a long line never makes the hint as wide as the
+    // screen. Draw what is inside with Wrapped and Bullet (or any item: nothing in it can make the card wider than the maximum, text that is not wrapped is cut instead of stretching it), and finish with
+    // EndCard when BeginCard returned true.
+    inline bool BeginCard() noexcept
     {
         PlaceAwayFromEdges(16.0f, ImVec2(380.0f, 220.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
         ImGui::SetNextWindowSizeConstraints(ImVec2(0.0f, 0.0f), ImVec2(400.0f, FLT_MAX));
-        if (ImGui::BeginTooltip())
-        {
-            const float Wrap = ImGui::GetFontSize() * 24.0f;
+        if (ImGui::BeginTooltip()) return true;
+        ImGui::PopStyleVar();
+        return false;
+    }
 
+    inline void EndCard() noexcept
+    {
+        ImGui::EndTooltip();
+        ImGui::PopStyleVar();
+    }
+
+    // The width text wraps at inside the card.
+    inline float CardWrapWidth() noexcept { return ImGui::GetFontSize() * 24.0f; }
+
+    // A paragraph that wraps at the width of the card.
+    inline void Wrapped(std::string_view Text) noexcept
+    {
+        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + CardWrapWidth());
+        ImGui::TextUnformatted(Text.data(), Text.data() + Text.size());
+        ImGui::PopTextWrapPos();
+    }
+
+    // A bullet followed by a paragraph that wraps at the width of the card.
+    inline void Bullet(std::string_view Text) noexcept
+    {
+        ImGui::Bullet();
+        ImGui::SameLine();
+        Wrapped(Text);
+    }
+
+    // The card itself, in a tooltip window at the cursor. The caller has already decided it should show.
+    inline void Draw(const content& C) noexcept
+    {
+        if (BeginCard())
+        {
             if (!C.m_Topic.empty())
             {
                 ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * 1.1f);
@@ -99,31 +132,24 @@ namespace xeditor::hint
             if (!C.m_Body.empty())
             {
                 if (!C.m_Topic.empty()) ImGui::Spacing();
-                ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + Wrap);
-                ImGui::TextUnformatted(C.m_Body.data(), C.m_Body.data() + C.m_Body.size());
-                ImGui::PopTextWrapPos();
+                Wrapped(C.m_Body);
             }
             if (!C.m_Disabled.empty())
             {
                 ImGui::Spacing();
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.72f, 0.38f, 1.0f));
-                ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + Wrap);
-                ImGui::Text("Unavailable: %.*s", static_cast<int>(C.m_Disabled.size()), C.m_Disabled.data());
-                ImGui::PopTextWrapPos();
+                Wrapped(std::string("Unavailable: ") + std::string(C.m_Disabled));
                 ImGui::PopStyleColor();
             }
             if (!C.m_Detail.empty())
             {
                 ImGui::Spacing();
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.57f, 0.62f, 1.0f));
-                ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + Wrap);
-                ImGui::TextUnformatted(C.m_Detail.data(), C.m_Detail.data() + C.m_Detail.size());
-                ImGui::PopTextWrapPos();
+                Wrapped(C.m_Detail);
                 ImGui::PopStyleColor();
             }
-            ImGui::EndTooltip();
+            EndCard();
         }
-        ImGui::PopStyleVar();
     }
 
     // Right after any item: shows the card while the mouse rests on it (also when the item is disabled). True when it showed.
