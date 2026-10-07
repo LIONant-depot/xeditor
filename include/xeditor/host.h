@@ -546,6 +546,15 @@ namespace xeditor
 
 
 
+            // A session whose name has a space in it ("Keeper Red": a prefab is named after its root) is addressed by its whole name: the line starts with the name and a backslash.
+            for (auto& S : m_Sessions)
+            {
+                if (!S->document_ptr()) continue;
+                const auto SessionName = S->display_name();
+                if (SessionName.find(' ') != std::string::npos && Line.size() > SessionName.size() && Line.compare(0, SessionName.size(), SessionName) == 0 && Line[SessionName.size()] == '\\')
+                    return run_on(S->undo(), std::string(Line.substr(SessionName.size() + 1)));
+            }
+
             // "Session\Command ...": the session is the first word. A backslash later in the line is part of an argument (a Windows path), never a session.
             const auto Slash = Line.find('\\') < Line.find_first_of(" \t\"") ? Line.find('\\') : std::string_view::npos;
 
