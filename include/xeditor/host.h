@@ -394,7 +394,7 @@ namespace xeditor
 
             if (!S->document_ptr()) return nullptr;
 
-            S->m_Undo.Init({}, false);
+            (void)S->m_Undo.Init({}, false);
 
             S->m_Document->Load();
 
