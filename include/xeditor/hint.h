@@ -178,5 +178,53 @@ namespace xeditor::hint
         Draw(C);
     }
 }
+namespace xeditor
+{
+    // The colour the inspector draws the VALUE of a read only property with (the word "False" of a read only bool): the normal text colour faded the way ImGui::BeginDisabled fades it (the style's
+    // DisabledAlpha), which is lighter than ImGuiCol_TextDisabled. Use it for anything that is shown and not editable and should read like those values.
+    inline ImVec4 ReadOnlyTextColor() noexcept
+    {
+        ImVec4 C = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+        C.w *= ImGui::GetStyle().DisabledAlpha;
+        return C;
+    }
+}
+
+namespace xeditor::popup
+{
+    // Where a popup of Size goes so that it is seen whole: under the anchor, its left edge on the anchor's, and
+    //  - against the right border, its right edge on the anchor's right edge instead (or, with no room at all, flush with the border);
+    //  - with no room below, above the anchor when there is more room there; otherwise pushed up until it fits.
+    // Pure: the bounds are the work area the popup must stay in.
+    inline ImVec2 PlaceUnderAt(ImVec2 AnchorMin, ImVec2 AnchorMax, ImVec2 Size, ImVec2 BoundsMin, ImVec2 BoundsMax) noexcept
+    {
+        float X = AnchorMin.x;
+        if (X + Size.x > BoundsMax.x) X = AnchorMax.x - Size.x;
+        if (X + Size.x > BoundsMax.x) X = BoundsMax.x - Size.x;
+        if (X < BoundsMin.x)          X = BoundsMin.x;
+
+        float Y = AnchorMax.y;
+        if (Y + Size.y > BoundsMax.y)
+        {
+            const float RoomBelow = BoundsMax.y - AnchorMax.y, RoomAbove = AnchorMin.y - BoundsMin.y;
+            if (RoomAbove > RoomBelow && AnchorMin.y - Size.y >= BoundsMin.y) Y = AnchorMin.y - Size.y;
+            else                                                              Y = BoundsMax.y - Size.y;
+        }
+        if (Y < BoundsMin.y) Y = BoundsMin.y;
+        return ImVec2(X, Y);
+    }
+
+    // Opens the next window (a popup: call right before ImGui::BeginPopup, while it is open) under the item it belongs to, kept inside the window it is drawn in: a popup that crosses the edge of the
+    // window becomes a window of the OS of its own, cut at the screen. AssumedSize is the size the popup will have (a menu: its widest label and its rows; a list: its width and its usual height). The anchor is
+    // the item's rectangle (ImGui::GetItemRectMin / Max, taken right after the item).
+    inline void PlaceUnder(ImVec2 AnchorMin, ImVec2 AnchorMax, ImVec2 AssumedSize) noexcept
+    {
+        const ImGuiViewport* pViewport = ImGui::GetWindowViewport();
+        const ImVec2 Min = pViewport->WorkPos;
+        const ImVec2 Max(pViewport->WorkPos.x + pViewport->WorkSize.x, pViewport->WorkPos.y + pViewport->WorkSize.y);
+        ImGui::SetNextWindowPos(PlaceUnderAt(AnchorMin, AnchorMax, AssumedSize, Min, Max));
+    }
+}
+
 
 #endif // XEDITOR_HINT_H
