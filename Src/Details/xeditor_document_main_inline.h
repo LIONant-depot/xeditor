@@ -109,7 +109,7 @@ namespace xeditor::document  // main
         }
 
         xassume(false);
-        return *reinterpret_cast<T*>(nullptr);
+        return *static_cast<T*>(nullptr);
     }
 
     //---------------------------------------------------------------------------------------------------------

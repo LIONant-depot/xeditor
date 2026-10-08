@@ -58,10 +58,10 @@ namespace xeditor::panel
 //
 // Private headers
 //
-#include "details/xeditor_document_base_inline.h"
-#include "details/xeditor_document_main_inline.h"
-#include "details/xeditor_ui_inline.h"
-#include "details/xeditor_frame_inline.h"
-#include "details/xeditor_panel_inline.h"
+#include "Details/xeditor_document_base_inline.h"
+#include "Details/xeditor_document_main_inline.h"
+#include "Details/xeditor_ui_inline.h"
+#include "Details/xeditor_frame_inline.h"
+#include "Details/xeditor_panel_inline.h"
 
 #endif

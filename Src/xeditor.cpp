@@ -6,10 +6,10 @@
 #include "../dependencies/xcore/dependencies/tracy/imgui/misc/fa_solid_900.h"
 #include "../dependencies/xcore/dependencies/tracy/imgui/misc/fa_regular_400.h"
 
-#include "details/xeditor_document_base.cpp"
-#include "details/xeditor_document_main.cpp"
-#include "details/xeditor_ui.cpp"
-#include "details/xeditor_command.cpp"
-#include "details/xeditor_frame.cpp"
-#include "details/xeditor_panel.cpp"
+#include "Details/xeditor_document_base.cpp"
+#include "Details/xeditor_document_main.cpp"
+#include "Details/xeditor_ui.cpp"
+#include "Details/xeditor_command.cpp"
+#include "Details/xeditor_frame.cpp"
+#include "Details/xeditor_panel.cpp"
 
