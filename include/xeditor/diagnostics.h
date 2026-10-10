@@ -27,6 +27,12 @@
 #pragma comment(lib, "Dbghelp.lib")
 #endif
 
+#if defined(__linux__)
+#include <csignal>
+#include <execinfo.h>
+#include <unistd.h>
+#endif
+
 namespace xeditor::diagnostics
 {
     inline std::mutex g_TraceMutex;
@@ -342,6 +348,40 @@ namespace xeditor::diagnostics
     {
         ::SetUnhandledExceptionFilter(&UnhandledExceptionFilterImpl);
         Log("SEH unhandled exception filter installed");
+    }
+#elif defined(__linux__)
+    // The same for Linux: a crash is a signal. It is logged with the same lines the Windows filter writes ("SEH exception ...", "SEH access violation ...", "SEH stack[n] ..."),
+    // so what reads the trace (the problems log, the crash record the Logs classify a launch by) does not care which system it ran on. Then the default action runs (the core dump / the exit status).
+    inline void CrashSignalHandler(int Signal, siginfo_t* pInfo, void*) noexcept
+    {
+        const char* pName = Signal == SIGSEGV ? "SIGSEGV" : Signal == SIGBUS ? "SIGBUS" : Signal == SIGFPE ? "SIGFPE" : Signal == SIGILL ? "SIGILL" : "SIGABRT";
+        Log("SEH exception code=0x%08X address=0x%p (signal %s)", static_cast<unsigned>(Signal), pInfo ? pInfo->si_addr : nullptr, pName);
+        if (pInfo && (Signal == SIGSEGV || Signal == SIGBUS)) Log("SEH access violation address=0x%p", pInfo->si_addr);
+
+        void* Frames[64];
+        const int Count = backtrace(Frames, 64);
+        if (char** pSymbols = backtrace_symbols(Frames, Count))
+        {
+            for (int Index = 0; Index < Count; ++Index) Log("SEH stack[%d] %s", Index, pSymbols[Index]);
+            std::free(pSymbols);
+        }
+        std::signal(Signal, SIG_DFL);
+        std::raise(Signal);
+    }
+
+    inline void InstallUnhandledExceptionFilter() noexcept
+    {
+        // a stack overflow has no stack left to run the handler on: it gets one of its own
+        static char AltStack[1 << 16];
+        stack_t Stack{}; Stack.ss_sp = AltStack; Stack.ss_size = sizeof(AltStack);
+        sigaltstack(&Stack, nullptr);
+
+        struct sigaction Action{};
+        Action.sa_sigaction = &CrashSignalHandler;
+        Action.sa_flags     = SA_SIGINFO | SA_ONSTACK;
+        sigemptyset(&Action.sa_mask);
+        for (const int Signal : { SIGSEGV, SIGBUS, SIGFPE, SIGILL, SIGABRT }) sigaction(Signal, &Action, nullptr);
+        Log("SEH unhandled exception filter installed (signals)");
     }
 #else
     inline void InstallUnhandledExceptionFilter() noexcept {}

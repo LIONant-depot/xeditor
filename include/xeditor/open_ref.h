@@ -36,7 +36,7 @@ namespace xeditor
     {
         if (R.m_Type != xlog::ref::type::File || R.m_Path.empty()) return;
         const std::string Location = R.m_Line > 0 ? std::format("{}:{}", R.m_Path, R.m_Line) : R.m_Path;
-        ImGui::SetClipboardText(Location.c_str());
+        if (ImGui::GetCurrentContext() != nullptr) ImGui::SetClipboardText(Location.c_str());          // a headless editor has no ImGui context (and no clipboard)
         std::error_code Ec;
         if (std::filesystem::exists(R.m_Path, Ec))          // a path that is not there (a compiler's output from another machine) is not handed to the shell: it would answer with a dialog
             ShellExecuteA(nullptr, "open", R.m_Path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);

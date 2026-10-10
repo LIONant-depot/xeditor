@@ -138,6 +138,7 @@ namespace xeditor
         // when the app binds its keys to actions (m_bDrawerToggleByAction), through the app's own "toggle drawer" action.
         void toggle_drawer_focused() noexcept
         {
+            if (ImGui::GetCurrentContext() == nullptr) return;
             if (ImGuiViewport* vp = FocusedDrawerViewport()) { drawer& D = drawer_for(vp->ID); D.m_bOpen = !D.m_bOpen; }
         }
         bool m_bDrawerToggleByAction = false;
@@ -145,6 +146,7 @@ namespace xeditor
         // Opens the focused window's drawer on the Logs tab with Query in the query bar ("op:12" for one operation, empty for everything).
         void show_logs(const std::string& Query) noexcept
         {
+            if (ImGui::GetCurrentContext() == nullptr) return;          // a headless editor has no window to show them in
             ImGuiViewport* vp = FocusedDrawerViewport();
             if (vp == nullptr) return;
             drawer& D = drawer_for(vp->ID);
