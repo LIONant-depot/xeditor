@@ -81,9 +81,6 @@ namespace xeditor::hint
         return Active == 0 || Active == ImGui::GetItemID() || Active == ImGui::GetCurrentWindow()->MoveId;
     }
 
-    // Where a diagnostic line of the hints goes (the editor points it at its trace file); nothing when not set.
-    inline void (*g_Diagnostic)(const char* pLine) = nullptr;
-
     // A hint card that is ALWAYS inside the window it is drawn in, so it is never given a window of its own (ImGui makes an OS window of any window that leaves the viewport it came
     // from). It does not guess its size: a new card starts at a small size that fits anywhere, and every frame it GROWS toward the size its content measured (about 14 per second,
     // smoothly), and its position is worked out for the size it has THAT frame (PlaceGrowing), growing away from the corner nearest the cursor: every step is inside the window. It looks
@@ -156,17 +153,6 @@ namespace xeditor::hint
             {
                 if (m_Known.size() > 256) m_Known.clear();                    // a few hundred resources is plenty of memory for sizes
                 m_Known[m_Owner] = m_Target;                                  // known from now on: the next hover of this owner opens at this size
-            }
-            // DIAGNOSTIC (to be removed): the first frames of every hover, what the card asked for and what ImGui gave it, in the trace file of the editor (LevelEditor.trace.log).
-            if (m_Age <= 8)
-            {
-                const ImVec2 Mouse = ImGui::GetIO().MousePos;
-                char Line[512];
-                std::snprintf(Line, sizeof(Line), "hint-card age=%d frame=%d mouse=%.0f,%.0f viewport=%.0f,%.0f %.0fx%.0f asked=%.0f,%.0f %.0fx%.0f target=%.0fx%.0f got=%.0f,%.0f %.0fx%.0f appearing=%d measured=%d known=%d"
-                    , m_Age, ImGui::GetFrameCount(), Mouse.x, Mouse.y, pWindow->Viewport ? pWindow->Viewport->Pos.x : -1.0f, pWindow->Viewport ? pWindow->Viewport->Pos.y : -1.0f
-                    , pWindow->Viewport ? pWindow->Viewport->Size.x : -1.0f, pWindow->Viewport ? pWindow->Viewport->Size.y : -1.0f, m_Asked.x, m_Asked.y, m_Asked.z, m_Asked.w
-                    , m_Target.x, m_Target.y, pWindow->Pos.x, pWindow->Pos.y, pWindow->Size.x, pWindow->Size.y, pWindow->Appearing ? 1 : 0, bMeasured ? 1 : 0, m_Known.count(m_Owner) ? 1 : 0);
-                if (g_Diagnostic) g_Diagnostic(Line);
             }
             ImGui::EndTooltip();
             ImGui::PopStyleVar();
