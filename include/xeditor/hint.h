@@ -16,12 +16,16 @@
 //      xeditor::hint::Show({ .m_Topic = "Play", .m_Body = "Starts playing this Level.", .m_Shortcut = "F5" });   // right after the item
 //      xeditor::hint::Text("Save\nSave the descriptor");     // the quick form: first line = topic, the rest = body (what SetTooltip took)
 #include "imgui.h"
+#include "imgui_internal.h"                 // ImGuiWindow: the size of the content, for growing_card
+#include "hint_placement.h"
 
 #include <cfloat>
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -59,6 +63,115 @@ namespace xeditor::hint
                          , (SpaceBelow < AssumedSize.y && SpaceAbove > SpaceBelow) ? 1.0f : 0.0f);
         ImGui::SetNextWindowPos(ImVec2(Mouse.x + (Pivot.x > 0.0f ? -Offset : Offset), Mouse.y + (Pivot.y > 0.0f ? -Offset : Offset)), ImGuiCond_Always, Pivot);
     }
+
+    // The most a card may take of the viewport of the window being drawn (what is left after the margin).
+    inline ImVec2 ViewportMaxSize(float MaxWidth = FLT_MAX) noexcept
+    {
+        const ImGuiViewport* pViewport = ImGui::GetWindowViewport();
+        return ImVec2(MaxWidth < pViewport->Size.x - 8.0f ? MaxWidth : pViewport->Size.x - 8.0f, pViewport->Size.y - 8.0f);
+    }
+
+    // Is the mouse resting on the last item, for a card that should stay open while the mouse is pressed on it? ImGui's own IsItemHovered says no from the press to the release: a press on
+    // the background of a window makes the window the "active item" (to move it, even when it cannot be moved), and any other active item blocks the hover. So a card that used the plain
+    // test closed on every press and opened again on the release. Here the press on the window itself does not count; a real widget that is active (a slider being dragged) still does.
+    inline bool IsItemHoveredForCard() noexcept
+    {
+        if (!ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) return false;
+        const ImGuiID Active = ImGui::GetActiveID();
+        return Active == 0 || Active == ImGui::GetItemID() || Active == ImGui::GetCurrentWindow()->MoveId;
+    }
+
+    // Where a diagnostic line of the hints goes (the editor points it at its trace file); nothing when not set.
+    inline void (*g_Diagnostic)(const char* pLine) = nullptr;
+
+    // A hint card that is ALWAYS inside the window it is drawn in, so it is never given a window of its own (ImGui makes an OS window of any window that leaves the viewport it came
+    // from). It does not guess its size: a new card starts at a small size that fits anywhere, and every frame it GROWS toward the size its content measured (about 14 per second,
+    // smoothly), and its position is worked out for the size it has THAT frame (PlaceGrowing), growing away from the corner nearest the cursor: every step is inside the window. It looks
+    // animated, and it is safe whatever the content turns out to be. Keep one per place that shows a card (a member), then, every frame the cursor rests on the thing:
+    //
+    //      if (Card.Begin(ImGui::GetItemID())) { ...draw the content (wrap long text at a fixed width)... Card.End(); }
+    struct growing_card
+    {
+        ImVec2   m_Size   = ImVec2(0.0f, 0.0f);      // the size shown this frame
+        ImVec2   m_Target = ImVec2(0.0f, 0.0f);      // the size of the content (and its padding), as measured by the frame before
+        ImGuiID  m_Owner  = 0;
+        int      m_LastFrame = -2;
+        int      m_Age = 0;
+        ImVec4   m_Asked = ImVec4(0, 0, 0, 0);       // where and how big the card was asked to be this frame (x, y, w, h): the diagnostic line
+        std::unordered_map<ImGuiID, ImVec2> m_Known;  // the measured size of every owner that was shown: the animation is only for a size that is not known yet
+
+        // True when the card is open: draw the content and call End(). MaxWidth caps the width (the card is never bigger than the window either).
+        bool Begin(ImGuiID Owner, float MaxWidth = 480.0f, float Offset = 16.0f) noexcept
+        {
+            const ImGuiViewport* pViewport = ImGui::GetWindowViewport();
+            const ImVec2 Max   = ViewportMaxSize(MaxWidth);
+            const ImVec2 Start(Max.x < 150.0f ? Max.x : 150.0f, Max.y < 64.0f ? Max.y : 64.0f);       // small enough to be safe anywhere
+            const int    Frame = ImGui::GetFrameCount();
+            if (Owner != m_Owner || Frame - m_LastFrame > 4)                    // a new hover (a gap of a few frames is the same hover)
+            {
+                m_Owner = Owner;
+                m_Age   = 0;                                                    // frames this hover has been measured for
+                const auto Known = m_Known.find(Owner);
+                // The growing is only how a size that is not known yet is found safely. A size that was measured before is known: the card opens at it at once (it is still measured every
+                // frame, so a change of the content is followed). Never past what the window can hold now.
+                if (Known != m_Known.end()) m_Size = m_Target = ImVec2(Known->second.x < Max.x ? Known->second.x : Max.x, Known->second.y < Max.y ? Known->second.y : Max.y);
+                else                        m_Size = m_Target = Start;
+            }
+            m_LastFrame = Frame;
+            ++m_Age;
+
+            m_Target.x = m_Target.x < Start.x ? Start.x : (m_Target.x > Max.x ? Max.x : m_Target.x);
+            m_Target.y = m_Target.y < Start.y ? Start.y : (m_Target.y > Max.y ? Max.y : m_Target.y);
+
+            const float Speed = 1.0f - std::exp(-14.0f * ImGui::GetIO().DeltaTime);
+            m_Size.x += (m_Target.x - m_Size.x) * Speed; if (std::fabs(m_Target.x - m_Size.x) < 0.5f) m_Size.x = m_Target.x;
+            m_Size.y += (m_Target.y - m_Size.y) * Speed; if (std::fabs(m_Target.y - m_Size.y) < 0.5f) m_Size.y = m_Target.y;
+
+            const ImVec2 Mouse = ImGui::GetIO().MousePos;
+            // The finished card the placement is worked out for is never smaller than the card that is shown (a target that shrank below it must not move it): the shown rectangle is always inside it.
+            const ImVec2 Done(m_Target.x > m_Size.x ? m_Target.x : m_Size.x, m_Target.y > m_Size.y ? m_Target.y : m_Size.y);
+            const point  At = PlaceGrowing({ Mouse.x, Mouse.y }, { m_Size.x, m_Size.y }, { Done.x, Done.y }, { pViewport->Pos.x, pViewport->Pos.y }
+                                         , { pViewport->Pos.x + pViewport->Size.x, pViewport->Pos.y + pViewport->Size.y }, Offset);
+            m_Asked = ImVec4(At.x, At.y, m_Size.x, m_Size.y);                 // for the diagnostic line in End()
+            ImGui::SetNextWindowViewport(pViewport->ID);
+            ImGui::SetNextWindowPos(ImVec2(At.x, At.y), ImGuiCond_Always);
+            ImGui::SetNextWindowSizeConstraints(m_Size, m_Size);              // the tooltip fits its content, the constraints decide: it is exactly the size we placed
+            ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0f);          // while it is smaller than its content it is cut, not given a scrollbar
+            const bool bOpen = ImGui::BeginTooltip();
+            if (!bOpen) ImGui::PopStyleVar();                                 // End() is not called for a card that did not open
+            return bOpen;
+        }
+
+        // Measures the content (for the next frame's target) and closes the card.
+        void End() noexcept
+        {
+            const ImGuiWindow* pWindow = ImGui::GetCurrentWindow();
+            // ContentSizeIdeal, not ContentSize: it is what the auto-fit of ImGui itself uses, and it counts what a table would need (the card is smaller than its content while it grows)
+            // The target only follows a real measurement: ImGui has no content size for the first frame or two of a window (zero: just its padding), and taking that for the size of the content
+            // made a card that opened at its known size be placed as if it were tiny (and shrink, and grow again).
+            const bool bMeasured = pWindow->ContentSizeIdeal.x > 0.0f && pWindow->ContentSizeIdeal.y > 0.0f;
+            if (bMeasured) m_Target = ImVec2(pWindow->ContentSizeIdeal.x + pWindow->WindowPadding.x * 2.0f, pWindow->ContentSizeIdeal.y + pWindow->WindowPadding.y * 2.0f);
+            // Only a MEASURED size is known (and only after a few frames of this hover).
+            if (m_Age >= 3 && bMeasured)
+            {
+                if (m_Known.size() > 256) m_Known.clear();                    // a few hundred resources is plenty of memory for sizes
+                m_Known[m_Owner] = m_Target;                                  // known from now on: the next hover of this owner opens at this size
+            }
+            // DIAGNOSTIC (to be removed): the first frames of every hover, what the card asked for and what ImGui gave it, in the trace file of the editor (LevelEditor.trace.log).
+            if (m_Age <= 8)
+            {
+                const ImVec2 Mouse = ImGui::GetIO().MousePos;
+                char Line[512];
+                std::snprintf(Line, sizeof(Line), "hint-card age=%d frame=%d mouse=%.0f,%.0f viewport=%.0f,%.0f %.0fx%.0f asked=%.0f,%.0f %.0fx%.0f target=%.0fx%.0f got=%.0f,%.0f %.0fx%.0f appearing=%d measured=%d known=%d"
+                    , m_Age, ImGui::GetFrameCount(), Mouse.x, Mouse.y, pWindow->Viewport ? pWindow->Viewport->Pos.x : -1.0f, pWindow->Viewport ? pWindow->Viewport->Pos.y : -1.0f
+                    , pWindow->Viewport ? pWindow->Viewport->Size.x : -1.0f, pWindow->Viewport ? pWindow->Viewport->Size.y : -1.0f, m_Asked.x, m_Asked.y, m_Asked.z, m_Asked.w
+                    , m_Target.x, m_Target.y, pWindow->Pos.x, pWindow->Pos.y, pWindow->Size.x, pWindow->Size.y, pWindow->Appearing ? 1 : 0, bMeasured ? 1 : 0, m_Known.count(m_Owner) ? 1 : 0);
+                if (g_Diagnostic) g_Diagnostic(Line);
+            }
+            ImGui::EndTooltip();
+            ImGui::PopStyleVar();
+        }
+    };
 
     // A key as a small cap: the text on a rounded plate.
     inline void KeyCap(std::string_view Text) noexcept
