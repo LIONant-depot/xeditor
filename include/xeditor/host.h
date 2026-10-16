@@ -18,6 +18,7 @@
 #include "notify.h"
 #include "idle_work.h"
 #include "save_all.h"
+#include "gi_allowance.h"
 
 #include <algorithm>
 #include <cassert>
@@ -71,6 +72,7 @@ namespace xeditor
         xlog::view_state                      m_LogsUi;        // what the Logs window remembers (query, preset, selection): it follows the person between editors
         console_log                           m_ConsoleLog;    // every command run through the host
         idle_work                             m_IdleWork;      // background maintenance that runs once the editor has been quiet for a while
+        gi_allowance                          m_GIAllowance;   // the GI's main-thread time per frame, shared by every renderer (gi_allowance.h)
         save_all                              m_SaveAll;       // Save All: everything that keeps unsaved work subscribes and saves it when this fires (save_all.h)
         std::function<bool(xundo::system&, std::string_view)> m_OnBeforeEdit;  // write-lock gate, given the undo system and the command line: return false to refuse the edit
 
