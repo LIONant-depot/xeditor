@@ -165,6 +165,17 @@ namespace xeditor
             m_LogsUi.m_BackButton[0] = m_LogsUi.m_BackButton[1] = -1.0f;          // drawn again next frame, where it now is
         }
 
+        // The focused window's drawer, open on the Compilation tab (what a resource editor's Feedback shows: how its compile went).
+        void show_compilation() noexcept
+        {
+            if (ImGui::GetCurrentContext() == nullptr) return;          // a headless editor has no window to show them in
+            ImGuiViewport* vp = FocusedDrawerViewport();
+            if (vp == nullptr) return;
+            drawer& D = drawer_for(vp->ID);
+            D.m_bOpen = true;
+            D.m_ActiveTab = D.m_RequestTab = kCompilationDrawerTab;
+        }
+
         // The Logs window's Forward: back to the Logs view Back left, and the drawer on the Logs tab again.
         bool logs_forward() noexcept
         {

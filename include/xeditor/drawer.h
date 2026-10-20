@@ -57,6 +57,9 @@ inline ImGuiViewport* FocusedDrawerViewport() noexcept
 // The index of the Logs tab in kTabs (DrawerRender): what "Open in Logs" selects.
 inline constexpr int kLogsDrawerTab = 4;
 
+// The index of the Compilation tab in kTabs: what a resource editor's Feedback selects.
+inline constexpr int kCompilationDrawerTab = 6;
+
 inline void DrawerHandleToggle(drawer& D) noexcept
 {
     const ImGuiIO& io = ImGui::GetIO();
