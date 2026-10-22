@@ -82,7 +82,7 @@ namespace xeditor::diagnostics
 #if defined(_MSC_VER)
         const unsigned long Pid = static_cast<unsigned long>(::_getpid());
 #else
-        const unsigned long Pid = 0;
+        const unsigned long Pid = static_cast<unsigned long>(::getpid());        // the launch's crash record is found by its pid (xlog::store::FindCrashRecord): never one shared value
 #endif
         std::fprintf(pFile, "[pid %lu t=%lld] ", Pid, static_cast<long long>(std::time(nullptr)));
         std::vfprintf(pFile, pFormat, Args);
