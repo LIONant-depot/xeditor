@@ -210,6 +210,7 @@ inline void DrawerRender(drawer& D, ImGuiViewport* pViewport, T_RENDER_TAB&& Ren
             "Commands",
             "Compilation",
             "Project Settings",
+            "Profiler",                     // (xprofile's tab: the host draws it, index 8)
         };
         constexpr int kTabCount = (int)(sizeof(kTabs) / sizeof(kTabs[0]));
         if (D.m_ActiveTab < 0 || D.m_ActiveTab >= kTabCount) D.m_ActiveTab = 0;
