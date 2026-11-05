@@ -43,11 +43,23 @@ namespace xeditor
     // Returns what BeginPopupModal returns (call ImGui::EndPopup when it is true).
     inline bool BeginModal( const char* pName, ImGuiWindowFlags Flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings, const ImVec2* pCenter = nullptr ) noexcept
     {
-        CenterNextPopup(pCenter);
-        // A minimum width. Wrapped text in a window that sizes itself is measured with no width on the first frame (one letter per line: very tall), and the window is placed with that size,
-        // so it ends up half a screen away from where it was asked to open once it shrinks to its text.
+        // A minimum width stops the first-frame "one letter per line" measure. Auto-sized height can still revise for a few
+        // frames after Appearing; ImGui keeps the top-left fixed then, so the middle drifts from the asked-for center.
+        // Re-pin the middle onto that center while AutoFitFrames* are still counting down (the user can drag it afterwards).
+        const ImVec2 Center = pCenter ? *pCenter : EditorRect().GetCenter();
         ImGui::SetNextWindowSizeConstraints(ImVec2(360.0f, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
-        return ImGui::BeginPopupModal(pName, nullptr, Flags);
+        ImGui::SetNextWindowPos(Center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        const bool bOpen = ImGui::BeginPopupModal(pName, nullptr, Flags);
+        if (bOpen)
+        {
+            ImGuiWindow* pWin = ImGui::GetCurrentWindow();
+            if (pWin && (pWin->Appearing || pWin->AutoFitFramesX > 0 || pWin->AutoFitFramesY > 0))
+            {
+                pWin->Pos.x = Center.x - pWin->Size.x * 0.5f;
+                pWin->Pos.y = Center.y - pWin->Size.y * 0.5f;
+            }
+        }
+        return bOpen;
     }
 }
 
